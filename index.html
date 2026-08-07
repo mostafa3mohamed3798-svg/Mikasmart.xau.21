@@ -345,59 +345,91 @@ async function fetchKlines() {
 function updateChartData() {
     if (!historicalData.length) return;
     candleSeries.setData(historicalData);
-    if (showEMA && emaSeries && typeof calculateEMA === 'function') {
-        const emaData = calculateEMA(historicalData, 9);
-        emaSeries.setData(emaData);
+    
+    // الاستدعاء المباشر عبر الكائن العام TA
+    if (showEMA && emaSeries && typeof TA !== 'undefined' && TA.calculateMovingAverages) {
+        const maResult = TA.calculateMovingAverages(historicalData, 9, 21);
+        if (maResult && maResult.emaFast) {
+            // تحويل البيانات لتتطابق مع مكتبة الرسومات (time & value)
+            const formattedEMA = historicalData.map((d, i) => ({
+                time: d.time,
+                value: maResult.emaFast[i]
+            })).filter(item => item.value !== null);
+            emaSeries.setData(formattedEMA);
+        }
     }
-    if (showVWAP && vwapSeries && typeof calculateVWAP === 'function') {
-        const vwapData = calculateVWAP(historicalData);
-        vwapSeries.setData(vwapData);
+    
+    if (showVWAP && vwapSeries && typeof TA !== 'undefined' && TA.calculateVWAP) {
+        const vwapArr = TA.calculateVWAP(historicalData);
+        if (vwapArr) {
+            const formattedVWAP = historicalData.map((d, i) => ({
+                time: d.time,
+                value: vwapArr[i]
+            })).filter(item => item.value !== null);
+            vwapSeries.setData(formattedVWAP);
+        }
     }
 }
 
 function applyIndicatorsToUI(data) {
     if (!data || data.length === 0) return;
+    
+    // استخدام المحرك الاحترافي TA.generateProSignal إذا كان متاحاً لتحليل السوق بدقة
+    if (typeof TA !== 'undefined' && TA.generateProSignal) {
+        const signalResult = TA.generateProSignal(data);
+        
+        document.getElementById('price').innerText = signalResult.price.toFixed(2);
+        const signalTag = document.getElementById('signalTag');
+        const signalPower = document.getElementById('signalPower');
+        const executeBtn = document.getElementById('executeBtn');
+        const slVal = document.getElementById('slVal');
+        const tp1Val = document.getElementById('tp1Val');
+        const tp2Val = document.getElementById('tp2Val');
+
+        document.getElementById('vwapFilterVal').innerText = signalResult.htfBias === 'up' ? 'إيجابي (Bullish)' : 'سلبي (Bearish)';
+        document.getElementById('macdFilterVal').innerText = 'مستقر';
+
+        const isBuy = signalResult.direction === 'BUY';
+        const isSell = signalResult.direction === 'SELL';
+        const score = signalResult.score || 50;
+
+        document.getElementById('bullishPercentText').innerText = `صعود: ${isBuy ? score : (100 - score)}%`;
+        document.getElementById('bearishPercentText').innerText = `هبوط: ${isSell ? score : (100 - score)}%`;
+        document.getElementById('bullishBar').style.width = `${isBuy ? score : 50}%`;
+        document.getElementById('bearishBar').style.width = `${isSell ? score : 50}%`;
+
+        if (isBuy) {
+            signalTag.className = "signal-tag signal-strong";
+            signalTag.innerText = "إشارة شراء قوية (BUY)";
+            signalPower.innerText = `قوة الإشارة: ${score}%`;
+            signalPower.style.color = "#22c55e";
+            executeBtn.className = "execute-btn strong-buy-active";
+            executeBtn.innerText = "تنفيذ صفقة شراء (BUY)";
+        } else if (isSell) {
+            signalTag.className = "signal-tag signal-strong-sell";
+            signalTag.innerText = "إشارة بيع قوية (SELL)";
+            signalPower.innerText = `قوة الإشارة: ${score}%`;
+            signalPower.style.color = "#ef4444";
+            executeBtn.className = "execute-btn strong-sell-active";
+            executeBtn.innerText = "تنفيذ صفقة بيع (SELL)";
+        } else {
+            signalTag.className = "signal-tag signal-wait";
+            signalTag.innerText = signalResult.decision || "بانتظار استقرار الزخم";
+            signalPower.innerText = "ترقب لحظي";
+            signalPower.style.color = "#eab308";
+            executeBtn.className = "execute-btn wait-active";
+            executeBtn.innerText = "بانتظار استقرار الزخم";
+        }
+
+        slVal.innerText = signalResult.suggestedSL !== null ? signalResult.suggestedSL : '---';
+        tp1Val.innerText = signalResult.suggestedTP1 !== null ? signalResult.suggestedTP1 : '---';
+        tp2Val.innerText = signalResult.suggestedTP2 !== null ? signalResult.suggestedTP2 : '---';
+        return;
+    }
+
+    // الطريقة الاحتياطية التقليدية في حال عدم توفر المحرك
     const latest = data[data.length - 1];
     document.getElementById('price').innerText = latest.close.toFixed(2);
-    const isBullish = latest.close >= latest.open;
-    
-    const signalTag = document.getElementById('signalTag');
-    const signalPower = document.getElementById('signalPower');
-    const executeBtn = document.getElementById('executeBtn');
-    const slVal = document.getElementById('slVal');
-    const tp1Val = document.getElementById('tp1Val');
-    const tp2Val = document.getElementById('tp2Val');
-
-    document.getElementById('vwapFilterVal').innerText = isBullish ? 'إيجابي (Bullish)' : 'سلبي (Bearish)';
-    document.getElementById('macdFilterVal').innerText = 'مستقر';
-
-    const pct = isBullish ? 65 : 35;
-    document.getElementById('bullishPercentText').innerText = `صعود: ${pct}%`;
-    document.getElementById('bearishPercentText').innerText = `هبوط: ${100 - pct}%`;
-    document.getElementById('bullishBar').style.width = `${pct}%`;
-    document.getElementById('bearishBar').style.width = `${100 - pct}%`;
-
-    if (isBullish) {
-        signalTag.className = "signal-tag signal-strong";
-        signalTag.innerText = "إشارة شراء قوية (BUY)";
-        signalPower.innerText = "صعودي مؤكد";
-        signalPower.style.color = "#22c55e";
-        executeBtn.className = "execute-btn strong-buy-active";
-        executeBtn.innerText = "تنفيذ صفقة شراء (BUY)";
-        slVal.innerText = (latest.close - 3.5).toFixed(2);
-        tp1Val.innerText = (latest.close + 4.0).toFixed(2);
-        tp2Val.innerText = (latest.close + 8.5).toFixed(2);
-    } else {
-        signalTag.className = "signal-tag signal-strong-sell";
-        signalTag.innerText = "إشارة بيع قوية (SELL)";
-        signalPower.innerText = "هبوطي مؤكد";
-        signalPower.style.color = "#ef4444";
-        executeBtn.className = "execute-btn strong-sell-active";
-        executeBtn.innerText = "تنفيذ صفقة بيع (SELL)";
-        slVal.innerText = (latest.close + 3.5).toFixed(2);
-        tp1Val.innerText = (latest.close - 4.0).toFixed(2);
-        tp2Val.innerText = (latest.close - 8.5).toFixed(2);
-    }
 }
 
 function executeOrder() {
