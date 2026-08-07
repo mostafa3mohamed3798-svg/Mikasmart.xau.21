@@ -42,7 +42,7 @@ body {
     box-shadow: 0 8px 25px rgba(0,0,0,0.5);
     margin-bottom: 12px;
 }
-.header-title { font-size: 1.15rem; font-weight: 800; color: #3b82f6; margin-bottom: 2px; text-shadow: 0 0 10px rgba(59,130,246,0.3); }
+    .header-title { font-size: 1.15rem; font-weight: 800; color: #3b82f6; margin-bottom: 2px; text-shadow: 0 0 10px rgba(59,130,246,0.3); }
 .symbol-name { font-size: 0.78rem; color: #64748b; margin-bottom: 8px; font-weight: 500; }
 .price-display {
     font-size: 2.8rem;
@@ -540,4 +540,13 @@ function loadChartLibraryThenStart() {
             startLiveFeed();
         },
         function () { // فشل كل المصادر
-            const priceEl = document.getE
+            const priceEl = document.getElementById('price');
+            if (priceEl) priceEl.innerText = "⚠️ فشل تحميل مكتبة الشارت (مشكلة شبكة/حجب)";
+            console.error("تعذّر تحميل lightweight-charts من كل المصادر المتاحة");
+        }
+    );
+}
+</script>
+
+</body>
+</html>
