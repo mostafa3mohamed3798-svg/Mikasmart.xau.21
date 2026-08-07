@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mika Pro Gold - True Futures Engine</title>
-<script src="indicators.js"></script>
 <script>
 // تحميل مكتبة الشارت مع خطة بديلة تلقائية لو فشل المصدر الأساسي (unpkg)
 // مشاكل شبكة/حجب CDN شائعة، فبدل توقف الصفحة بالكامل نجرّب مصدر آخر.
@@ -512,24 +511,33 @@ function executeOrder() {
     alert("تم إرسال أمر التداول بنجاح!");
 }
 
-// نبدأ الشارت والبيانات فقط بعد التأكد من نجاح تحميل مكتبة الرسم،
-// مع تجربة مصدر بديل (jsdelivr) تلقائياً لو المصدر الأساسي (unpkg) فشل
+// كسر الكاش: نضيف رقم زمني للرابط حتى يتأكد المتصفح/الشبكة من جلب أحدث
+// نسخة من indicators.js دائماً، بدل الاعتماد على نسخة قديمة محفوظة مسبقاً
+const CACHE_BUSTER = Date.now();
+
+// نحمّل indicators.js أولاً (مع كسر كاش)، وبعد نجاحه نحمّل مكتبة الشارت،
+// وبعد نجاحهما الاثنين نبدأ الشارت والاتصال المباشر بالبيانات
 loadScriptWithFallback(
-    [
-        "https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js",
-        "https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js",
-    ],
-    function () { // نجح التحميل
-        initChart();
-        startLiveFeed();
+    [`indicators.js?v=${CACHE_BUSTER}`],
+    function () { // نجح تحميل indicators.js
+        loadChartLibraryThenStart();
     },
-    function () { // فشل كل المصادر
-        const priceEl = document.getElementById('price');
-        if (priceEl) priceEl.innerText = "⚠️ فشل تحميل مكتبة الشارت (مشكلة شبكة/حجب)";
-        console.error("تعذّر تحميل lightweight-charts من كل المصادر المتاحة");
+    function () { // فشل تحميل indicators.js حتى مع كسر الكاش
+        document.getElementById('signalTag').innerText = "⚠️ فشل تحميل indicators.js حتى بعد كسر الكاش";
+        console.error("تعذّر تحميل indicators.js نهائياً - تأكد من رفعه بنفس المستوى مع index.html");
+        loadChartLibraryThenStart(); // نكمّل تحميل الشارت على الأقل حتى لو المؤشرات معطّلة
     }
 );
-</script>
 
-</body>
-</html>
+function loadChartLibraryThenStart() {
+    loadScriptWithFallback(
+        [
+            "https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js",
+            "https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js",
+        ],
+        function () { // نجح التحميل
+            initChart();
+            startLiveFeed();
+        },
+        function () { // فشل كل المصادر
+            const priceEl = document.getE
