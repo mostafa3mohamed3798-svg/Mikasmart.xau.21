@@ -1,525 +1,451 @@
-ذرًا على الخطأ! يبدو أن الكود انقطع. إليك الكود الكامل لـ `index.html` مع جميع الأنماط والوظائف:
+/* =====================================================================
+   indicators.js — نظام تحليل تقني متكامل (يعمل كفريق واحد لاتخاذ القرار)
+   =====================================================================
+   شكل البيانات المتوقع (data): مصفوفة شموع مرتبة من الأقدم للأحدث:
+     [{ time, open, high, low, close, volume }, ...]
 
-```html
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mika Pro Gold - True Futures Engine</title>
-<script src="indicators.js"></script>
-<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-<style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-    background-color: #060913;
-    color: #f8fafc;
-    font-family: system-ui, -apple-system, sans-serif;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-.top-price-card {
-    background: linear-gradient(145deg, #0f172a, #090d16);
-    border-radius: 16px;
-    padding: 16px;
-    width: 100%;
-    max-width: 600px;
-    text-align: center;
-    border: 1px solid #1e293b;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
-    margin-bottom: 12px;
-}
-.header-title { font-size: 1.15rem; font-weight: 800; color: #3b82f6; margin-bottom: 2px; text-shadow: 0 0 10px rgba(59,130,246,0.3); }
-.symbol-name { font-size: 0.78rem; color: #64748b; margin-bottom: 8px; font-weight: 500; }
-.price-display {
-    font-size: 2.8rem;
-    font-weight: 900;
-    color: #3b82f6;
-    letter-spacing: 0.5px;
-    margin: 4px 0;
-    line-height: 1;
-}
-.status-badge { font-size: 0.75rem; color: #22c55e; margin-top: 4px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
-.status-badge::before { content: ""; width: 8px; height: 8px; background-color: #22c55e; border-radius: 50%; box-shadow: 0 0 8px #22c55e; animation: pulse 1.5s infinite; }
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.4; }
-    100% { opacity: 1; }
-}
-.market-stats-bar {
-    display: flex;
-    justify-content: space-between;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid #1e293b;
-    padding: 8px 12px;
-    border-radius: 8px;
-    margin: 10px 0;
-    font-size: 0.75rem;
-    color: #94a3b8;
-}
-.market-stats-bar span { color: #f8fafc; font-weight: bold; }
-.signal-container {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid #1e293b;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-.signal-tag {
-    padding: 6px 16px;
-    border-radius: 20px;
-    font-weight: bold;
-    font-size: 0.88rem;
-}
-.signal-wait { background-color: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); }
-.signal-strong { background-color: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
-.signal-strong-sell { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-.targets-box {
-    display: flex;
-    justify-content: space-around;
-    width: 100%;
-    margin-top: 10px;
-    background: #060913;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid #1e293b;
-    font-size: 0.82rem;
-}
-.target-item span { color: #3b82f6; font-weight: bold; }
-.trade-action-box {
-    width: 100%;
-    margin-top: 12px;
-}
-.execute-btn {
-    width: 100%;
-    color: #fff;
-    border: none;
-    padding: 12px;
-    border-radius: 10px;
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.25s ease;
-}
-.execute-btn.wait-active { background: #1e293b; color: #64748b; cursor: not-allowed; border: 1px solid #334155; }
-.execute-btn.strong-buy-active { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
-.execute-btn.strong-sell-active { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
-.filters-dashboard {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    width: 100%;
-    max-width: 600px;
-    margin-bottom: 12px;
-}
-.filter-card {
-    background: #0f172a;
-    border: 1px solid #1e293b;
-    padding: 10px;
-    border-radius: 12px;
-    text-align: center;
-}
-.filter-label { font-size: 0.7rem; color: #64748b; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.5px; }
-.filter-value { font-size: 0.85rem; font-weight: bold; color: #f8fafc; }
-.chart-card {
-    background: #0f172a;
-    border-radius: 16px;
-    padding: 12px;
-    width: 100%;
-    max-width: 600px;
-    border: 1px solid #1e293b;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
-}
-.chart-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    background: #060913;
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px solid #1e293b;
-}
-.tf-group, .indicator-group { display: flex; gap: 6px; flex-wrap: wrap; }
-.tf-btn, .indicator-btn {
-    background: #1e293b;
-    color: #94a3b8;
-    border: 1px solid #334155;
-    padding: 5px 10px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.tf-btn:hover, .indicator-btn:hover { background: #334155; color: #fff; }
-.tf-btn.active { background: #3b82f6; color: #060913; border-color: #3b82f6; box-shadow: 0 0 10px rgba(59,130,246,0.4); }
-.indicator-btn.active { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-color: #3b82f6; }
-.chart-container {
-    width: 100%;
-    height: 350px;
-    position: relative;
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid #1e293b;
-}
-#chart { width: 100%; height: 100%; }
-</style>
-</head>
-<body>
+   يحتوي هذا الملف على:
+     1) ATR, RSI, MACD, Bollinger, Stochastic, ADX, Fibonacci
+     2) الدعم والمقاومة + نماذج شموع مبسّطة
+     3) EMA200 + VWAP (فلتر الاتجاه الرئيسي)
+     4) Smart Money Concepts: Market Structure (BOS/CHOCH), Order Blocks, FVG
+     5) تحليل حجم متقدم: CVD تقريبي + Volume Profile (POC)
+     6) فلتر الأخبار الاقتصادية + فلتر التذبذب الشاذ
+     7) فلتر الفريمات المتعددة (Multi-Timeframe Confirmation)
+     8) generateProSignal(): الدالة الموحّدة التي تدمج كل ما سبق
+        وتُخرج قرار BUY/SELL/WAIT مع قوة إشارة من 0 إلى 100 + SL/TP
 
-<div class="top-price-card">
-    <div class="header-title">Mika Pro Gold - True Futures Engine</div>
-    <div class="symbol-name">Bybit Linear - XAUUSDT (سعر الفيوتشر العالمي الحقيقي)</div>
-    <div id="price" class="price-display">جاري التحميل ...</div>
-    <div class="status-badge">متصل بسعر Bybit المباشر</div>
-    
-    <div class="market-stats-bar">
-        <div>السيولة / الحالة: <span id="marketStatusText">نشط</span></div>
-        <div>محرك التحليل: <span style="color: #3b82f6;">v3.5 Pro</span></div>
-    </div>
-    
-    <div class="signal-container">
-        <span id="signalTag" class="signal-tag signal-wait">بانتظار استقرار الزخم</span>
-        <span class="signal-power">الحالة: <strong id="signalPower" style="color: #fff;">ترقب لحظي</strong></span>
-    </div>
-    
-    <div class="targets-box">
-        <div class="target-item">وقف خسارة (SL): <span id="slVal">---</span></div>
-        <div class="target-item">هدف أول (TP1): <span id="tp1Val">---</span></div>
-        <div class="target-item">هدف ثاني (TP2): <span id="tp2Val">---</span></div>
-    </div>
-    
-    <div class="trade-action-box">
-        <button id="executeBtn" class="execute-btn wait-active" onclick="executeOrder()">
-            بانتظار استقرار الزخم
-        </button>
-    </div>
-</div>
-
-<div class="filters-dashboard">
-    <div class="filter-card">
-        <div class="filter-label">VWAP FILTER</div>
-        <div id="vwapFilterVal" class="filter-value" style="color: #3b82f6;">--</div>
-    </div>
-    <div class="filter-card">
-        <div class="filter-label">SPEED ENGINE</div>
-        <div id="macdFilterVal" class="filter-value" style="color: #3b82f6;">--</div>
-    </div>
-    <div class="filter-card" style="grid-column: span 2;">
-        <div class="filter-label" style="display: flex; justify-content: space-between;">
-            <span>قوة الشمعة الحالية (Candle Power)</span>
-            <span id="candleTimer" style="color: #3b82f6;">--</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: bold; margin: 6px 0 4px 0;">
-            <span id="bullishPercentText" style="color: #22c55e;">صعود: 50%</span>
-            <span id="bearishPercentText" style="color: #ef4444;">هبوط: 50%</span>
-        </div>
-        <div style="width: 100%; background: #1e293b; height: 8px; border-radius: 4px; overflow: hidden; display: flex;">
-            <div id="bullishBar" style="width: 50%; background: #22c55e; transition: width 0.2s ease;"></div>
-            <div id="bearishBar" style="width: 50%; background: #ef4444; transition: width 0.2s ease;"></div>
-        </div>
-    </div>
-</div>
-
-<div class="chart-card">
-    <div class="chart-toolbar">
-        <div class="tf-group">
-            <button class="tf-btn active" onclick="changeTimeframe('1m', event)">1m</button>
-            <button class="tf-btn" onclick="changeTimeframe('5m', event)">5m</button>
-            <button class="tf-btn" onclick="changeTimeframe('15m', event)">15m</button>
-            <button class="tf-btn" onclick="changeTimeframe('4h', event)">4h</button>
-        </div>
-        <div class="indicator-group">
-            <button id="emaToggle" class="indicator-btn active" onclick="toggleEMA()">EMA</button>
-            <button id="vwapToggle" class="indicator-btn active" onclick="toggleVWAP()">VWAP</button>
-        </div>
-    </div>
-    <div class="chart-container">
-        <div id="chart"></div>
-    </div>
-</div>
-
-<script>
-let chart, candleSeries, emaSeries, vwapSeries;
-let currentTF = '1m';
-let showEMA = true;
-let showVWAP = true;
-let historicalData = [];
-
-function initChart() {
-    const chartElement = document.getElementById('chart');
-    chartElement.innerHTML = '';
-    chart = LightweightCharts.createChart(chartElement, {
-        layout: {
-            background: { type: 'solid', color: '#0f172a' },
-            textColor: '#94a3b8',
-        },
-        grid: {
-            vertLines: { color: '#1e293b' },
-            horzLines: { color: '#1e293b' },
-        },
-        crosshair: {
-            mode: LightweightCharts.CrosshairMode.Normal,
-        },
-        rightPriceScale: { borderColor: '#1e293b' },
-        timeScale: { borderColor: '#1e293b', timeVisible: true, secondsVisible: false },
-    });
-    
-    candleSeries = chart.addCandlestickSeries({
-        upColor: '#22c55e',
-        downColor: '#ef4444',
-        borderVisible: false,
-        wickUpColor: '#22c55e',
-        wickDownColor: '#ef4444',
-    });
-
-    if (showEMA) {
-        emaSeries = chart.addLineSeries({ color: '#3b82f6', lineWidth: 2 });
-    }
-    if (showVWAP) {
-        vwapSeries = chart.addLineSeries({ color: '#eab308', lineWidth: 2 });
-    }
-
-    window.addEventListener('resize', () => {
-        chart.applyOptions({ width: chartElement.clientWidth, height: chartElement.clientHeight });
-    });
-}
-
-function changeTimeframe(tf, event) {
-    document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
-    if (event && event.target) event.target.classList.add('active');
-    currentTF = tf;
-    fetchKlines();
-}
-
-function toggleEMA() {
-    showEMA = !showEMA;
-    const btn = document.getElementById('emaToggle');
-    btn.classList.toggle('active', showEMA);
-    initChart();
-    updateChartData();
-}
-
-function toggleVWAP() {
-    showVWAP = !showVWAP;
-    const btn = document.getElementById('vwapToggle');
-    btn.classList.toggle('active', showVWAP);
-    initChart();
-    updateChartData();
-}
-
-async function fetchKlines() {
-    try {
-        let interval = '1';
-        if (currentTF === '5m') interval = '5';
-        if (currentTF === '15m') interval = '15';
-        if (currentTF === '4h') interval = '240';
-        
-        const response = await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=200`);
-        const data = await response.json();
-        
-        if (data && data.result && data.result.list) {
-            historicalData = data.result.list.reverse().map(item => ({
-                time: parseInt(item[0]) / 1000,
-                open: parseFloat(item[1]),
-                high: parseFloat(item[2]),
-                low: parseFloat(item[3]),
-                close: parseFloat(item[4]),
-                volume: parseFloat(item[5])
-            }));
-            
-            // استخدام المؤشرات من indicators.js إذا كانت متاحة
-            if (typeof calculateATR === 'function') {
-                const atrValues = calculateATR(historicalData);
-                console.log("ATR:", atrValues.slice(-3));
-            }
-            if (typeof calculateRSI === 'function') {
-                const rsiValues = calculateRSI(historicalData);
-                console.log("RSI:", rsiValues.slice(-3));
-            }
-        }
-        applyIndicatorsToUI(historicalData);
-        updateChartData();
-    } catch (e) {
-        console.error("خطأ في جلب البيانات", e);
-    }
-}
-
-function updateChartData() {
-    if (!historicalData.length) return;
-    candleSeries.setData(historicalData);
-    if (showEMA && emaSeries && typeof calculateEMA === 'function') {
-        const emaData = calculateEMA(historicalData, 9);
-        emaSeries.setData(emaData);
-    }
-    if (showVWAP && vwapSeries && typeof calculateVWAP === 'function') {
-        const vwapData = calculateVWAP(historicalData);
-        vwapSeries.setData(vwapData);
-    }
-}
-
-function applyIndicatorsToUI(data) {
-    if (!data || data.length === 0) return;
-    const latest = data[data.length - 1];
-    document.getElementById('price').innerText = latest.close.toFixed(2);
-    const isBullish = latest.close >= latest.open;
-    
-    const signalTag = document.getElementById('signalTag');
-    const signalPower = document.getElementById('signalPower');
-    const executeBtn = document.getElementById('executeBtn');
-    const slVal = document.getElementById('slVal');
-    const tp1Val = document.getElementById('tp1Val');
-    const tp2Val = document.getElementById('tp2Val');
-
-    document.getElementById('vwapFilterVal').innerText = isBullish ? 'إيجابي (Bullish)' : 'سلبي (Bearish)';
-    document.getElementById('macdFilterVal').innerText = 'مستقر';
-
-    const pct = isBullish ? 65 : 35;
-    document.getElementById('bullishPercentText').innerText = `صعود: ${pct}%`;
-    document.getElementById('bearishPercentText').innerText = `هبوط: ${100 - pct}%`;
-    document.getElementById('bullishBar').style.width = `${pct}%`;
-    document.getElementById('bearishBar').style.width = `${100 - pct}%`;
-
-    if (isBullish) {
-        signalTag.className = "signal-tag signal-strong";
-        signalTag.innerText = "إشارة شراء قوية (BUY)";
-        signalPower.innerText = "صعودي مؤكد";
-        signalPower.style.color = "#22c55e";
-        executeBtn.className = "execute-btn strong-buy-active";
-        executeBtn.innerText = "تنفيذ صفقة شراء (BUY)";
-        slVal.innerText = (latest.close - 3.5).toFixed(2);
-        tp1Val.innerText = (latest.close + 4.0).toFixed(2);
-        tp2Val.innerText = (latest.close + 8.5).toFixed(2);
-    } else {
-        signalTag.className = "signal-tag signal-strong-sell";
-        signalTag.innerText = "إشارة بيع قوية (SELL)";
-        signalPower.innerText = "هبوطي مؤكد";
-        signalPower.style.color = "#ef4444";
-        executeBtn.className = "execute-btn strong-sell-active";
-        executeBtn.innerText = "تنفيذ صفقة بيع (SELL)";
-        slVal.innerText = (latest.close + 3.5).toFixed(2);
-        tp1Val.innerText = (latest.close - 4.0).toFixed(2);
-        tp2Val.innerText = (latest.close - 8.5).toFixed(2);
-    }
-}
-
-function executeOrder() {
-    alert("تم إرسال أمر التداول بنجاح!");
-}
-
-initChart();
-fetchKlines();
-setInterval(fetchKlines, 5000);
-</script>
-
-</body>
-</html>
-```
-
-وإليك كود `indicators.js` الكامل:
-
-```javascript
-console.log("indicators.js تم تحميله بنجاح");
+   الاستخدام الأساسي:
+     const result = TA.generateProSignal(candles, higherTimeframeCandles, newsTimes);
+     TA.applyProSignalToUI(result); // يحدّث نفس عناصر الواجهة الموجودة بصفحتك
+   ===================================================================== */
 
 (function (global) {
-"use strict";
+  "use strict";
 
-function closesOf(data) { return data.map(d => d.close); }
-function highsOf(data) { return data.map(d => d.high); }
-function lowsOf(data) { return data.map(d => d.low); }
-function volumesOf(data) { return data.map(d => d.volume); }
+  // ---------------------------------------------------------------
+  // أدوات مساعدة عامة
+  // ---------------------------------------------------------------
+  function toMillis(t) {
+    if (t instanceof Date) return t.getTime();
+    if (typeof t === "number") return t < 2e10 ? t * 1000 : t; // ثواني أم ميلي ثانية
+    return new Date(t).getTime();
+  }
 
-function ema(values, period) {
+  function closesOf(data) { return data.map(d => d.close); }
+  function highsOf(data) { return data.map(d => d.high); }
+  function lowsOf(data) { return data.map(d => d.low); }
+  function volumesOf(data) { return data.map(d => d.volume); }
+
+  function sma(values, period) {
+    const out = new Array(values.length).fill(null);
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) {
+      sum += values[i];
+      if (i >= period) sum -= values[i - period];
+      if (i >= period - 1) out[i] = sum / period;
+    }
+    return out;
+  }
+
+  function ema(values, period) {
     const out = new Array(values.length).fill(null);
     const k = 2 / (period + 1);
     let prev = values[0];
     for (let i = 0; i < values.length; i++) {
-        prev = i === 0 ? values[0] : (values[i] - prev) * k + prev;
-        out[i] = prev;
+      prev = i === 0 ? values[0] : (values[i] - prev) * k + prev;
+      out[i] = prev;
     }
     return out;
-}
+  }
 
-function emaWilder(values, period) {
+  function stddev(values, period) {
+    const out = new Array(values.length).fill(null);
+    for (let i = period - 1; i < values.length; i++) {
+      const slice = values.slice(i - period + 1, i + 1);
+      const mean = slice.reduce((a, b) => a + b, 0) / period;
+      const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period;
+      out[i] = Math.sqrt(variance);
+    }
+    return out;
+  }
+
+  function last(arr) { return arr[arr.length - 1]; }
+  function lastN(arr, n) { return arr[arr.length - n]; }
+
+  // ===================================================================
+  // 1) ATR - قياس التقلب
+  // ===================================================================
+  function calculateATR(data, period = 14) {
+    const tr = data.map((c, i) => {
+      if (i === 0) return c.high - c.low;
+      const prevClose = data[i - 1].close;
+      return Math.max(c.high - c.low, Math.abs(c.high - prevClose), Math.abs(c.low - prevClose));
+    });
+    return emaWilder(tr, period);
+  }
+
+  // EMA بطريقة وايلدر (alpha = 1/period) المستخدمة في ATR/ADX/RSI الكلاسيكي
+  function emaWilder(values, period) {
     const out = new Array(values.length).fill(null);
     let prev = null;
     for (let i = 0; i < values.length; i++) {
-        if (i < period - 1) {
-            out[i] = null;
-            continue;
+      if (i < period) {
+        if (i === period - 1) {
+          const seed = values.slice(0, period).reduce((a, b) => a + b, 0) / period;
+          prev = seed;
+          out[i] = seed;
         }
-        if (prev === null) {
-            prev = values.slice(0, period).reduce((a, b) => a + b, 0) / period;
-        }
-        prev = (values[i] - prev) / period + prev;
-        out[i] = prev;
+        continue;
+      }
+      prev = (values[i] - prev) / period + prev;
+      out[i] = prev;
     }
     return out;
-}
+  }
 
-global.calculateATR = function(data, period = 14) {
-    const tr = data.map((c, i) => {
-        if (i === 0) return c.high - c.low;
-        const prevClose = data[i - 1].close;
-        return Math.max(c.high - c.low, Math.abs(c.high - prevClose), Math.abs(c.low - prevClose));
-    });
-    return emaWilder(tr, period);
-};
-
-global.calculateRSI = function(data, period = 14) {
+  // ===================================================================
+  // 2) RSI
+  // ===================================================================
+  function calculateRSI(data, period = 14) {
     const closes = closesOf(data);
     const gains = [0], losses = [0];
     for (let i = 1; i < closes.length; i++) {
-        const diff = closes[i] - closes[i - 1];
-        gains.push(Math.max(diff, 0));
-        losses.push(Math.max(-diff, 0));
+      const diff = closes[i] - closes[i - 1];
+      gains.push(Math.max(diff, 0));
+      losses.push(Math.max(-diff, 0));
     }
     const avgGain = emaWilder(gains, period);
     const avgLoss = emaWilder(losses, period);
     return closes.map((_, i) => {
-        if (avgGain[i] === null || avgLoss[i] === null) return 50;
-        if (avgLoss[i] === 0) return 100;
-        const rs = avgGain[i] / avgLoss[i];
-        return 100 - 100 / (1 + rs);
+      if (avgGain[i] === null || avgLoss[i] === null) return 50;
+      if (avgLoss[i] === 0) return 100;
+      const rs = avgGain[i] / avgLoss[i];
+      return 100 - 100 / (1 + rs);
     });
-};
+  }
 
-global.calculateEMA = function(data, period = 9) {
+  // ===================================================================
+  // 3) الدعم والمقاومة
+  // ===================================================================
+  function calculateSupportResistance(data, window = 20, tolerance = 0.015) {
+    const highs = highsOf(data), lows = lowsOf(data);
+    const localMax = [], localMin = [];
+    for (let i = 1; i < data.length - 1; i++) {
+      if (highs[i] > highs[i - 1] && highs[i] > highs[i + 1]) localMax.push(highs[i]);
+      if (lows[i] < lows[i - 1] && lows[i] < lows[i + 1]) localMin.push(lows[i]);
+    }
+    function cluster(levels, tol) {
+      if (!levels.length) return [];
+      const sorted = [...levels].sort((a, b) => a - b);
+      const clusters = [[sorted[0]]];
+      for (let i = 1; i < sorted.length; i++) {
+        const cur = clusters[clusters.length - 1];
+        if (Math.abs(sorted[i] - cur[cur.length - 1]) / cur[cur.length - 1] <= tol) cur.push(sorted[i]);
+        else clusters.push([sorted[i]]);
+      }
+      return clusters.map(c => +(c.reduce((a, b) => a + b, 0) / c.length).toFixed(4));
+    }
+    const recentMax = localMax.slice(-window * 3);
+    const recentMin = localMin.slice(-window * 3);
+    const resistanceLevels = cluster(recentMax, tolerance);
+    const supportLevels = cluster(recentMin, tolerance);
+    const price = last(closesOf(data));
+    const nearestSupport = supportLevels.filter(s => s < price).sort((a, b) => b - a)[0] ?? null;
+    const nearestResistance = resistanceLevels.filter(r => r > price).sort((a, b) => a - b)[0] ?? null;
+    return { supportLevels, resistanceLevels, nearestSupport, nearestResistance };
+  }
+
+  // ===================================================================
+  // 4) الحجم: OBV + متوسط الحجم
+  // ===================================================================
+  function calculateVolumeIndicators(data, maPeriod = 20) {
+    const closes = closesOf(data), volumes = volumesOf(data);
+    const obv = [0];
+    for (let i = 1; i < closes.length; i++) {
+      const dir = closes[i] > closes[i - 1] ? 1 : closes[i] < closes[i - 1] ? -1 : 0;
+      obv.push(obv[i - 1] + dir * volumes[i]);
+    }
+    const volumeMA = sma(volumes, maPeriod);
+    const volumeRatio = volumes.map((v, i) => (volumeMA[i] ? v / volumeMA[i] : null));
+    return { obv, volumeMA, volumeRatio };
+  }
+
+  // ===================================================================
+  // 5) المتوسطات المتحركة SMA/EMA
+  // ===================================================================
+  function calculateMovingAverages(data, fast = 20, slow = 50) {
     const closes = closesOf(data);
-    const emaValues = ema(closes, period);
-    return data.map((d, i) => ({
-        time: d.time,
-        value: emaValues[i]
-    })).filter(d => d.value !== null);
-};
+    return { smaFast: sma(closes, fast), smaSlow: sma(closes, slow), emaFast: ema(closes, fast) };
+  }
 
-global.calculateVWAP = function(data) {
-    let cumVolume = 0;
-    let cumVolumePrice = 0;
-    return data.map(d => {
-        const typical = (d.high + d.low + d.close) / 3;
-        cumVolumePrice += typical * d.volume;
-        cumVolume += d.volume;
-        return {
-            time: d.time,
-            value: cumVolume > 0 ? cumVolumePrice / cumVolume : typical
-        };
+  // ===================================================================
+  // 6) MACD
+  // ===================================================================
+  function calculateMACD(data, fast = 12, slow = 26, signal = 9) {
+    const closes = closesOf(data);
+    const emaFast = ema(closes, fast), emaSlow = ema(closes, slow);
+    const macdLine = closes.map((_, i) => emaFast[i] - emaSlow[i]);
+    const signalLine = ema(macdLine, signal);
+    const hist = macdLine.map((v, i) => v - signalLine[i]);
+    return { macdLine, signalLine, hist };
+  }
+
+  // ===================================================================
+  // 7) Bollinger Bands / Stochastic / ADX / Fibonacci / نموذج شموع
+  // ===================================================================
+  function calculateBollingerBands(data, period = 20, stdMult = 2) {
+    const closes = closesOf(data);
+    const mid = sma(closes, period);
+    const sd = stddev(closes, period);
+    const upper = mid.map((m, i) => (m === null ? null : m + stdMult * sd[i]));
+    const lower = mid.map((m, i) => (m === null ? null : m - stdMult * sd[i]));
+    const percentB = closes.map((c, i) => {
+      if (upper[i] === null || lower[i] === null || upper[i] === lower[i]) return 0.5;
+      return (c - lower[i]) / (upper[i] - lower[i]);
     });
-};
+    return { mid, upper, lower, percentB };
+  }
 
-console.log("جميع دوال المؤشرات جاهزة");
+  function calculateStochastic(data, kPeriod = 14, dPeriod = 3) {
+    const highs = highsOf(data), lows = lowsOf(data), closes = closesOf(data);
+    const k = closes.map((c, i) => {
+      if (i < kPeriod - 1) return null;
+      const hh = Math.max(...highs.slice(i - kPeriod + 1, i + 1));
+      const ll = Math.min(...lows.slice(i - kPeriod + 1, i + 1));
+      return hh === ll ? 50 : (100 * (c - ll)) / (hh - ll);
+    });
+    const kClean = k.map(v => (v === null ? 0 : v));
+    const d = sma(kClean, dPeriod).map((v, i) => (k[i] === null ? null : v));
+    return { k, d };
+  }
 
-})(typeof window !== "undefined" ? window : globalThis);
-```
+  function calculateADX(data, period = 14) {
+    const highs = highsOf(data), lows = lowsOf(data), closes = closesOf(data);
+    const plusDM = [0], minusDM = [0], tr = [highs[0] - lows[0]];
+    for (let i = 1; i < data.length; i++) {
+      const upMove = highs[i] - highs[i - 1];
+      const downMove = lows[i - 1] - lows[i];
+      plusDM.push(upMove > downMove && upMove > 0 ? upMove : 0);
+      minusDM.push(downMove > upMove && downMove > 0 ? downMove : 0);
+      tr.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1])));
+    }
+    const atrS = emaWilder(tr, period);
+    const plusDIRaw = emaWilder(plusDM, period);
+    const minusDIRaw = emaWilder(minusDM, period);
+    const plusDI = atrS.map((a, i) => (a && plusDIRaw[i] !== null ? (100 * plusDIRaw[i]) / a : null));
+    const minusDI = atrS.map((a, i) => (a && minusDIRaw[i] !== null ? (100 * minusDIRaw[i]) / a : null));
+    const dx = plusDI.map((p, i) => {
+      if (p === null || minusDI[i] === null || p + minusDI[i] === 0) return null;
+      return (100 * Math.abs(p - minusDI[i])) / (p + minusDI[i]);
+    });
+    const dxClean = dx.map(v => (v === null ? 0 : v));
+    const adx = emaWilder(dxClean, period).map((v, i) => (dx[i] === null ? null : v));
+    return { plusDI, minusDI, adx };
+  }
 
-الآن الكود كامل ويجب أن يعمل بشكل صحيح مع جميع الأنماط والوظائف!
+  function calculateFibonacciLevels(data, lookback = 60) {
+    const window = data.slice(-lookback);
+    const swingHigh = Math.max(...window.map(c => c.high));
+    const swingLow = Math.min(...window.map(c => c.low));
+    const diff = swingHigh - swingLow;
+    const ratios = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
+    const levels = {};
+    ratios.forEach(r => { levels["fib_" + r] = +(swingHigh - diff * r).toFixed(4); });
+    levels.swingHigh = +swingHigh.toFixed(4);
+    levels.swingLow = +swingLow.toFixed(4);
+    return levels;
+  }
+
+  function detectCandlestickPattern(data) {
+    if (data.length < 2) return "None";
+    const c = data[data.length - 1], p = data[data.length - 2];
+    const body = Math.abs(c.close - c.open);
+    const range = Math.max(c.high - c.low, 1e-9);
+    if (body / range < 0.1) return "Doji";
+    if (p.close < p.open && c.close > c.open && c.close > p.open && c.open < p.close) return "Bullish_Engulfing";
+    if (p.close > p.open && c.close < c.open && c.close < p.open && c.open > p.close) return "Bearish_Engulfing";
+    return "None";
+  }
+
+  // ===================================================================
+  // 8) EMA200 + VWAP — فلتر الاتجاه الرئيسي
+  // ===================================================================
+  function calculateEMA200(data) { return ema(closesOf(data), 200); }
+
+  function calculateVWAP(data, resetDaily = true) {
+    const out = new Array(data.length).fill(null);
+    let cumTPV = 0, cumVol = 0, lastDay = null;
+    for (let i = 0; i < data.length; i++) {
+      const c = data[i];
+      const day = resetDaily ? new Date(toMillis(c.time)).toDateString() : "ALL";
+      if (day !== lastDay) { cumTPV = 0; cumVol = 0; lastDay = day; }
+      const typical = (c.high + c.low + c.close) / 3;
+      cumTPV += typical * c.volume;
+      cumVol += c.volume;
+      out[i] = cumVol ? cumTPV / cumVol : null;
+    }
+    return out;
+  }
+
+  // ===================================================================
+  // 9) Smart Money: Swing Points / Market Structure (BOS / CHOCH)
+  // ===================================================================
+  function findSwingPoints(data, window = 3) {
+    const highs = highsOf(data), lows = lowsOf(data);
+    const swingHigh = new Array(data.length).fill(false);
+    const swingLow = new Array(data.length).fill(false);
+    for (let i = window; i < data.length - window; i++) {
+      const hSlice = highs.slice(i - window, i + window + 1);
+      const lSlice = lows.slice(i - window, i + window + 1);
+      if (highs[i] === Math.max(...hSlice) && hSlice.filter(h => h === highs[i]).length === 1) swingHigh[i] = true;
+      if (lows[i] === Math.min(...lSlice) && lSlice.filter(l => l === lows[i]).length === 1) swingLow[i] = true;
+    }
+    return { swingHigh, swingLow };
+  }
+
+  function detectMarketStructure(data, window = 3) {
+    const { swingHigh, swingLow } = findSwingPoints(data, window);
+    const points = [];
+    for (let i = 0; i < data.length; i++) {
+      if (swingHigh[i]) points.push({ i, kind: "high", price: data[i].high, time: data[i].time });
+      if (swingLow[i]) points.push({ i, kind: "low", price: data[i].low, time: data[i].time });
+    }
+    points.sort((a, b) => a.i - b.i);
+
+    let lastHigh = null, lastLow = null, trend = null;
+    const events = [];
+    for (const p of points) {
+      if (p.kind === "high") {
+        if (lastHigh !== null) {
+          if (p.price > lastHigh) {
+            if (trend === "down") { events.push({ i: p.i, time: p.time, type: "CHOCH_Bullish", price: p.price }); trend = "up"; }
+            else { events.push({ i: p.i, time: p.time, type: "BOS_Bullish", price: p.price }); trend = "up"; }
+          }
+        }
+        lastHigh = p.price;
+      } else {
+        if (lastLow !== null) {
+          if (p.price < lastLow) {
+            if (trend === "up") { events.push({ i: p.i, time: p.time, type: "CHOCH_Bearish", price: p.price }); trend = "down"; }
+            else { events.push({ i: p.i, time: p.time, type: "BOS_Bearish", price: p.price }); trend = "down"; }
+          }
+        }
+        lastLow = p.price;
+      }
+    }
+    return {
+      trend,
+      lastEvent: events.length ? events[events.length - 1] : null,
+      recentEvents: events.slice(-5),
+      lastSwingHigh: lastHigh,
+      lastSwingLow: lastLow,
+    };
+  }
+
+  // ===================================================================
+  // 10) Order Blocks & Fair Value Gaps — نسخة محسّنة بشروط احترافية
+  // ===================================================================
+  // Order Block محسّن: يُقبل فقط إذا تحقق:
+  //   1) قوة الكسر: مدى شمعة الكسر > 1.3×ATR (حركة انفجارية حقيقية لا ضوضاء)
+  //   2) تأكيد الحجم: حجم شمعة الكسر أعلى من متوسط الحجم المحلي
+  //   3) تتبّع لاحق لإعادة الاختبار (retested) والإبطال (mitigated)
+  function detectOrderBlocks(data, structureEvents, atrArr) {
+    const volumes = volumesOf(data);
+    const blocks = [];
+    for (const ev of structureEvents) {
+      const breakCandle = data[ev.i];
+      const breakRange = breakCandle.high - breakCandle.low;
+      const atrAtBreak = atrArr && atrArr[ev.i] ? atrArr[ev.i] : null;
+      const localVols = volumes.slice(Math.max(0, ev.i - 20), ev.i);
+      const localVolAvg = localVols.length ? localVols.reduce((a, b) => a + b, 0) / localVols.length : 0;
+
+      const strongBreak = atrAtBreak ? breakRange >= 1.3 * atrAtBreak : true;
+      const volumeConfirmed = localVolAvg ? breakCandle.volume >= localVolAvg : true;
+      if (!strongBreak || !volumeConfirmed) continue; // كسر ضعيف بلا سيولة كافية -> يُتجاهل
+
+      const start = Math.max(0, ev.i - 10);
+      const segment = data.slice(start, ev.i + 1);
+      const isBullish = ev.type.includes("Bullish");
+      const opposite = isBullish ? segment.filter(c => c.close < c.open) : segment.filter(c => c.close > c.open);
+      if (!opposite.length) continue;
+      const c = opposite[opposite.length - 1];
+
+      let retested = false, mitigated = false, mitigatedAt = null;
+      for (let j = ev.i + 1; j < data.length; j++) {
+        const bar = data[j];
+        const touchesZone = bar.low <= c.high && bar.high >= c.low;
+        if (touchesZone) {
+          retested = true;
+          const invalidated = isBullish ? bar.close < c.low : bar.close > c.high;
+          if (invalidated) { mitigated = true; mitigatedAt = bar.time; break; }
+        }
+      }
+
+      blocks.push({
+        type: isBullish ? "Bullish_OB" : "Bearish_OB",
+        time: c.time, top: +c.high.toFixed(4), bottom: +c.low.toFixed(4),
+        relatedEvent: ev.type, breakStrengthATR: atrAtBreak ? +(breakRange / atrAtBreak).toFixed(2) : null,
+        volumeConfirmed, retested, mitigated, mitigatedAt,
+      });
+    }
+    return blocks.slice(-10);
+  }
+
+  // FVG محسّن: يتتبّع هل تم ملء الفجوة لاحقاً (Mitigation) جزئياً/كلياً؛
+  // الفجوات المُعبّأة بالكامل (mitigatedPct>=0.95) تُستبعد من التصويت.
+  function detectFVG(data) {
+    const gaps = [];
+    for (let i = 2; i < data.length; i++) {
+      let gap = null;
+      if (data[i].low > data[i - 2].high) {
+        gap = { type: "Bullish_FVG", time: data[i].time, top: +data[i].low.toFixed(4), bottom: +data[i - 2].high.toFixed(4) };
+      } else if (data[i].high < data[i - 2].low) {
+        gap = { type: "Bearish_FVG", time: data[i].time, top: +data[i - 2].low.toFixed(4), bottom: +data[i].high.toFixed(4) };
+      }
+      if (gap) {
+        let mitigatedPct = 0;
+        for (let j = i + 1; j < data.length; j++) {
+          const bar = data[j];
+          const overlapTop = Math.min(bar.high, gap.top);
+          const overlapBottom = Math.max(bar.low, gap.bottom);
+          if (overlapTop > overlapBottom) {
+            mitigatedPct = Math.max(mitigatedPct, (overlapTop - overlapBottom) / (gap.top - gap.bottom));
+          }
+          if (mitigatedPct >= 0.95) break;
+        }
+        gap.mitigatedPct = +Math.min(1, mitigatedPct).toFixed(2);
+        gap.mitigated = gap.mitigatedPct >= 0.95;
+        gaps.push(gap);
+      }
+    }
+    return gaps.slice(-10);
+  }
+
+  // ===================================================================
+  // 10b) Liquidity Sweep (Stop Hunt) + Equal Highs / Equal Lows
+  // ===================================================================
+  // Liquidity Sweep: شمعة تخترق (بالفتيل فقط) قمة/قاع سابق ثم تُغلق
+  // بالعودة داخل النطاق -> إشارة كلاسيكية لتصفية أوامر الوقف قبل الحركة
+  // الحقيقية، من أهم مفاهيم Smart Money المطلوبة.
+  function detectLiquiditySweep(data, window = 3, wickMinATRMult = 0.5) {
+    const { swingHigh, swingLow } = findSwingPoints(data, window);
+    const atrArr = calculateATR(data);
+    const sweeps = [];
+    let lastHighLevel = null, lastLowLevel = null;
+
+    for (let i = 0; i < data.length; i++) {
+      if (swingHigh[i]) lastHighLevel = data[i].high;
+      if (swingLow[i]) lastLowLevel = data[i].low;
+      const c = data[i];
+      const atr = atrArr[i] || 0;
+
+      if (lastHighLevel !== null && c.high > lastHighLevel && c.close < lastHighLevel) {
+        const wick = c.high - Math.max(c.open, c.close);
+        if (wick >= wickMinATRMult * atr) {
+          sweeps.push({ type: "Bearish_Sweep", time: c.time, level: +lastHighLevel.toFixed(4), wick: +wick.toFixed(4) });
+        }
+      }
+      if (lastLowLevel !== null && c.low < lastLowLevel && c.close > lastLowLevel) {
+        const wick = Math.min(c.open, c.close) - c.low;
+    
