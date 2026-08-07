@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mika Pro Gold - True Futures Engine</title>
-<script src="indicators.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -245,8 +244,150 @@ body {
         <div id="chart"></div>
     </div>
 </div>
-
 <script>
+// ===================================================================
+// نظام التحليل الفني والمؤشرات المدمج (بديل indicators.js)
+// ===================================================================
+const TA = (function() {
+  function closesOf(data) { return data.map(d => d.close); }
+  function highsOf(data) { return data.map(d => d.high); }
+  function lowsOf(data) { return data.map(d => d.low); }
+  function last(arr) { return arr[arr.length - 1]; }
+
+  function sma(values, period) {
+    const out = new Array(values.length).fill(null);
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) {
+      sum += values[i];
+      if (i >= period) sum -= values[i - period];
+      if (i >= period - 1) out[i] = sum / period;
+    }
+    return out;
+  }
+
+  function ema(values, period) {
+    const out = new Array(values.length).fill(null);
+    const k = 2 / (period + 1);
+    let prev = values[0];
+    for (let i = 0; i < values.length; i++) {
+      prev = i === 0 ? values[0] : (values[i] - prev) * k + prev;
+      out[i] = prev;
+    }
+    return out;
+  }
+
+  function emaWilder(values, period) {
+    const out = new Array(values.length).fill(null);
+    let prev = null;
+    for (let i = 0; i < values.length; i++) {
+      if (i < period) {
+        if (i === period - 1) {
+          const seed = values.slice(0, period).reduce((a, b) => a + b, 0) / period;
+          prev = seed;
+          out[i] = seed;
+        }
+        continue;
+      }
+      prev = (values[i] - prev) / period + prev;
+      out[i] = prev;
+    }
+    return out;
+  }
+
+  function calculateATR(data, period = 14) {
+    const tr = data.map((c, i) => {
+      if (i === 0) return c.high - c.low;
+      const prevClose = data[i - 1].close;
+      return Math.max(c.high - c.low, Math.abs(c.high - prevClose), Math.abs(c.low - prevClose));
+    });
+    return emaWilder(tr, period);
+  }
+
+  function calculateMovingAverages(data, fast = 9, slow = 21) {
+    const closes = closesOf(data);
+    return { emaFast: ema(closes, fast), emaSlow: ema(closes, slow) };
+  }
+
+  function calculateVWAP(data, resetDaily = true) {
+    const out = new Array(data.length).fill(null);
+    let cumTPV = 0, cumVol = 0, lastDay = null;
+    for (let i = 0; i < data.length; i++) {
+      const c = data[i];
+      const day = resetDaily ? new Date(c.time * 1000).toDateString() : "ALL";
+      if (day !== lastDay) { cumTPV = 0; cumVol = 0; lastDay = day; }
+      const typical = (c.high + c.low + c.close) / 3;
+      cumTPV += typical * c.volume;
+      cumVol += c.volume;
+      out[i] = cumVol ? cumTPV / cumVol : null;
+    }
+    return out;
+  }
+
+  function generateProSignal(data) {
+    if (!data || data.length < 30) return null;
+    const currentPrice = last(closesOf(data));
+    const atrArr = calculateATR(data);
+    const atr = last(atrArr) || (currentPrice * 0.002);
+    
+    const vwapArr = calculateVWAP(data);
+    const currentVWAP = last(vwapArr);
+    const htfBias = currentPrice >= currentVWAP ? 'up' : 'down';
+
+    const emaFastArr = ema(closesOf(data), 9);
+    const emaSlowArr = ema(closesOf(data), 21);
+    const fastVal = last(emaFastArr);
+    const slowVal = last(emaSlowArr);
+
+    let direction = 'WAIT';
+    let score = 50;
+    let decision = 'بانتظار استقرار الزخم';
+
+    if (fastVal > slowVal && currentPrice > currentVWAP) {
+      direction = 'BUY';
+      score = 78;
+      decision = 'إشارة شراء قوية (BUY)';
+    } else if (fastVal < slowVal && currentPrice < currentVWAP) {
+      direction = 'SELL';
+      score = 78;
+      decision = 'إشارة بيع قوية (SELL)';
+    }
+
+    let suggestedSL = null;
+    let suggestedTP1 = null;
+    let suggestedTP2 = null;
+
+    if (direction === 'BUY') {
+      suggestedSL = +(currentPrice - (1.5 * atr)).toFixed(2);
+      suggestedTP1 = +(currentPrice + (1.5 * atr)).toFixed(2);
+      suggestedTP2 = +(currentPrice + (3.0 * atr)).toFixed(2);
+    } else if (direction === 'SELL') {
+      suggestedSL = +(currentPrice + (1.5 * atr)).toFixed(2);
+      suggestedTP1 = +(currentPrice - (1.5 * atr)).toFixed(2);
+      suggestedTP2 = +(currentPrice - (3.0 * atr)).toFixed(2);
+    }
+
+    return {
+      price: currentPrice,
+      direction,
+      score,
+      decision,
+      htfBias,
+      suggestedSL,
+      suggestedTP1,
+      suggestedTP2
+    };
+  }
+
+  return {
+    calculateMovingAverages,
+    calculateVWAP,
+    generateProSignal
+  };
+})();
+
+// ===================================================================
+// منطق الرسوم البيانية وتشغيل الواجهة
+// ===================================================================
 let chart, candleSeries, emaSeries, vwapSeries;
 let currentTF = '1m';
 let showEMA = true;
@@ -256,6 +397,7 @@ let historicalData = [];
 function initChart() {
     const chartElement = document.getElementById('chart');
     chartElement.innerHTML = '';
+    
     chart = LightweightCharts.createChart(chartElement, {
         layout: {
             background: { type: 'solid', color: '#0f172a' },
@@ -280,12 +422,8 @@ function initChart() {
         wickDownColor: '#ef4444',
     });
 
-    if (showEMA) {
-        emaSeries = chart.addLineSeries({ color: '#3b82f6', lineWidth: 2 });
-    }
-    if (showVWAP) {
-        vwapSeries = chart.addLineSeries({ color: '#eab308', lineWidth: 2 });
-    }
+    emaSeries = chart.addLineSeries({ color: '#3b82f6', lineWidth: 2 });
+    vwapSeries = chart.addLineSeries({ color: '#eab308', lineWidth: 2 });
 
     window.addEventListener('resize', () => {
         chart.applyOptions({ width: chartElement.clientWidth, height: chartElement.clientHeight });
@@ -303,16 +441,14 @@ function toggleEMA() {
     showEMA = !showEMA;
     const btn = document.getElementById('emaToggle');
     btn.classList.toggle('active', showEMA);
-    initChart();
-    updateChartData();
+    if (emaSeries) emaSeries.applyOptions({ visible: showEMA });
 }
 
 function toggleVWAP() {
     showVWAP = !showVWAP;
     const btn = document.getElementById('vwapToggle');
     btn.classList.toggle('active', showVWAP);
-    initChart();
-    updateChartData();
+    if (vwapSeries) vwapSeries.applyOptions({ visible: showVWAP });
 }
 
 async function fetchKlines() {
@@ -334,11 +470,13 @@ async function fetchKlines() {
                 close: parseFloat(item[4]),
                 volume: parseFloat(item[5])
             }));
+            
+            applyIndicatorsToUI(historicalData);
+            updateChartData();
         }
-        applyIndicatorsToUI(historicalData);
-        updateChartData();
     } catch (e) {
-        console.error("خطأ في جلب البيانات", e);
+        console.error("خطأ في جلب البيانات:", e);
+        document.getElementById('price').innerText = "خطأ في الاتصال";
     }
 }
 
@@ -346,26 +484,24 @@ function updateChartData() {
     if (!historicalData.length) return;
     candleSeries.setData(historicalData);
     
-    // الاستدعاء المباشر عبر الكائن العام TA
-    if (showEMA && emaSeries && typeof TA !== 'undefined' && TA.calculateMovingAverages) {
+    if (emaSeries && typeof TA !== 'undefined' && TA.calculateMovingAverages) {
         const maResult = TA.calculateMovingAverages(historicalData, 9, 21);
         if (maResult && maResult.emaFast) {
-            // تحويل البيانات لتتطابق مع مكتبة الرسومات (time & value)
             const formattedEMA = historicalData.map((d, i) => ({
                 time: d.time,
                 value: maResult.emaFast[i]
-            })).filter(item => item.value !== null);
+            })).filter(item => item.value !== null && !isNaN(item.value));
             emaSeries.setData(formattedEMA);
         }
     }
     
-    if (showVWAP && vwapSeries && typeof TA !== 'undefined' && TA.calculateVWAP) {
+    if (vwapSeries && typeof TA !== 'undefined' && TA.calculateVWAP) {
         const vwapArr = TA.calculateVWAP(historicalData);
         if (vwapArr) {
             const formattedVWAP = historicalData.map((d, i) => ({
                 time: d.time,
                 value: vwapArr[i]
-            })).filter(item => item.value !== null);
+            })).filter(item => item.value !== null && !isNaN(item.value));
             vwapSeries.setData(formattedVWAP);
         }
     }
@@ -374,11 +510,12 @@ function updateChartData() {
 function applyIndicatorsToUI(data) {
     if (!data || data.length === 0) return;
     
-    // استخدام المحرك الاحترافي TA.generateProSignal إذا كان متاحاً لتحليل السوق بدقة
     if (typeof TA !== 'undefined' && TA.generateProSignal) {
         const signalResult = TA.generateProSignal(data);
+        if (!signalResult) return;
         
-        document.getElementById('price').innerText = signalResult.price.toFixed(2);
+        document.getElementById('price').innerText = signalResult.price ? signalResult.price.toFixed(2) : '--';
+        
         const signalTag = document.getElementById('signalTag');
         const signalPower = document.getElementById('signalPower');
         const executeBtn = document.getElementById('executeBtn');
@@ -421,21 +558,17 @@ function applyIndicatorsToUI(data) {
             executeBtn.innerText = "بانتظار استقرار الزخم";
         }
 
-        slVal.innerText = signalResult.suggestedSL !== null ? signalResult.suggestedSL : '---';
-        tp1Val.innerText = signalResult.suggestedTP1 !== null ? signalResult.suggestedTP1 : '---';
-        tp2Val.innerText = signalResult.suggestedTP2 !== null ? signalResult.suggestedTP2 : '---';
-        return;
+        slVal.innerText = signalResult.suggestedSL !== null && signalResult.suggestedSL !== undefined ? signalResult.suggestedSL : '---';
+        tp1Val.innerText = signalResult.suggestedTP1 !== null && signalResult.suggestedTP1 !== undefined ? signalResult.suggestedTP1 : '---';
+        tp2Val.innerText = signalResult.suggestedTP2 !== null && signalResult.suggestedTP2 !== undefined ? signalResult.suggestedTP2 : '---';
     }
-
-    // الطريقة الاحتياطية التقليدية في حال عدم توفر المحرك
-    const latest = data[data.length - 1];
-    document.getElementById('price').innerText = latest.close.toFixed(2);
 }
 
 function executeOrder() {
     alert("تم إرسال أمر التداول بنجاح!");
 }
 
+// التشغيل الأولي
 initChart();
 fetchKlines();
 setInterval(fetchKlines, 5000);
