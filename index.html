@@ -5,7 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mika Pro Gold - True Futures Engine</title>
 <script src="indicators.js"></script>
-<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+// تحميل مكتبة الشارت مع خطة بديلة تلقائية لو فشل المصدر الأساسي (unpkg)
+// مشاكل شبكة/حجب CDN شائعة، فبدل توقف الصفحة بالكامل نجرّب مصدر آخر.
+function loadScriptWithFallback(urls, onSuccess, onFail) {
+    let i = 0;
+    function tryNext() {
+        if (i >= urls.length) { onFail(); return; }
+        const s = document.createElement('script');
+        s.src = urls[i++];
+        s.onload = onSuccess;
+        s.onerror = tryNext;
+        document.head.appendChild(s);
+    }
+    tryNext();
+}
+</script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -253,9 +268,15 @@ let showEMA = true;
 let showVWAP = true;
 let historicalData = [];
 let htfData = [];
+let ws = null;
+let htfWs = null;
+let wsPingInterval = null;
+let htfPingInterval = null;
+let renderThrottle = null;
 
 // خريطة الفريم الأعلى المستخدم للتأكيد (Multi-Timeframe Confirmation)
 const HTF_INTERVAL_MAP = { '1m': '15', '5m': '60', '15m': '240', '4h': 'D' };
+const TF_TO_BYBIT_INTERVAL = { '1m': '1', '5m': '5', '15m': '15', '4h': '240' };
 
 function initChart() {
     const chartElement = document.getElementById('chart');
@@ -300,7 +321,9 @@ function changeTimeframe(tf, event) {
     document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
     if (event && event.target) event.target.classList.add('active');
     currentTF = tf;
-    fetchKlines();
+    historicalData = [];
+    htfData = [];
+    startLiveFeed();
 }
 
 function toggleEMA() {
@@ -319,54 +342,121 @@ function toggleVWAP() {
     updateChartData();
 }
 
-async function fetchKlines() {
-    try {
-        let interval = '1';
-        if (currentTF === '5m') interval = '5';
-        if (currentTF === '15m') interval = '15';
-        if (currentTF === '4h') interval = '240';
+// ---------------------------------------------------------------------
+// جلب البيانات عبر WebSocket بدل REST fetch — Bybit يرفض CORS على
+// REST من متصفح (fetch يفشل برسالة "Failed to fetch")، لكن WebSocket
+// غير خاضع لقيود CORS أساساً، وهو أيضاً أسرع (بيانات لحظية حقيقية
+// بدل استعلام كل 5 ثواني).
+// ---------------------------------------------------------------------
+function upsertCandle(arr, msg, maxLen = 500) {
+    const t = Math.floor(Number(msg.start) / 1000);
+    const candle = {
+        time: t,
+        open: parseFloat(msg.open), high: parseFloat(msg.high),
+        low: parseFloat(msg.low), close: parseFloat(msg.close),
+        volume: parseFloat(msg.volume),
+    };
+    if (arr.length && arr[arr.length - 1].time === t) {
+        arr[arr.length - 1] = candle;
+    } else {
+        arr.push(candle);
+        if (arr.length > maxLen) arr.shift();
+    }
+    return candle;
+}
 
-        const response = await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=300`);
-        const data = await response.json();
-
-        if (data && data.result && data.result.list) {
-            historicalData = data.result.list.reverse().map(item => ({
-                time: parseInt(item[0]) / 1000,
-                open: parseFloat(item[1]),
-                high: parseFloat(item[2]),
-                low: parseFloat(item[3]),
-                close: parseFloat(item[4]),
-                volume: parseFloat(item[5])
-            }));
-        }
-
-        // جلب الفريم الأعلى بالتوازي لتأكيد الاتجاه (Multi-Timeframe)
-        try {
-            const htfInterval = HTF_INTERVAL_MAP[currentTF] || '240';
-            const htfResponse = await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${htfInterval}&limit=250`);
-            const htfJson = await htfResponse.json();
-            if (htfJson && htfJson.result && htfJson.result.list) {
-                htfData = htfJson.result.list.reverse().map(item => ({
-                    time: parseInt(item[0]) / 1000,
-                    open: parseFloat(item[1]),
-                    high: parseFloat(item[2]),
-                    low: parseFloat(item[3]),
-                    close: parseFloat(item[4]),
-                    volume: parseFloat(item[5])
-                }));
-            }
-        } catch (htfErr) {
-            console.warn("تعذّر جلب بيانات الفريم الأعلى، سيتم التحليل بدون تأكيد متعدد الفريمات", htfErr);
-            htfData = [];
-        }
-
+function scheduleRender() {
+    // نؤجّل التحديث الفعلي لجزء من الثانية لتجميع عدة رسائل WS متتالية
+    // في تحديث واحد بدل إعادة حساب كل المؤشرات مع كل تيك سعر صغير
+    if (renderThrottle) return;
+    renderThrottle = setTimeout(() => {
+        renderThrottle = null;
         applyIndicatorsToUI(historicalData);
         updateChartData();
-    } catch (e) {
-        console.error("خطأ في جلب البيانات", e);
+    }, 500);
+}
+
+let mainReconnectAttempts = 0;
+let htfReconnectAttempts = 0;
+
+function openBybitKlineSocket(interval, symbol, onCandle, role) {
+    const socket = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+    let pingHandle = null;
+
+    socket.onopen = () => {
+        socket.send(JSON.stringify({ op: 'subscribe', args: [`kline.${interval}.${symbol}`] }));
+        pingHandle = setInterval(() => {
+            if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ op: 'ping' }));
+        }, 20000); // Bybit يتطلب ping دوري كل ~20 ثانية وإلا يقفل الاتصال
+        if (role === 'main') mainReconnectAttempts = 0; else htfReconnectAttempts = 0;
+    };
+
+    socket.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+            if (msg.topic && msg.topic.startsWith('kline.') && Array.isArray(msg.data)) {
+                msg.data.forEach(candleMsg => onCandle(candleMsg));
+            }
+        } catch (err) {
+            console.error('خطأ في تحليل رسالة WebSocket', err);
+        }
+    };
+
+    socket.onerror = (err) => {
+        console.error('خطأ WebSocket', err);
+    };
+
+    socket.onclose = (closeEvent) => {
+        if (pingHandle) clearInterval(pingHandle);
+        // event.code و event.reason بيوضّحوا سبب الإغلاق الحقيقي (بخلاف
+        // onerror الغامض) — مفيد جداً للتشخيص من الموبايل
+        const reasonText = closeEvent.reason ? closeEvent.reason : "بدون رسالة توضيحية من السيرفر";
+        console.warn(`WebSocket (${role}) أُغلق - Code: ${closeEvent.code}, Reason: ${reasonText}, Clean: ${closeEvent.wasClean}`);
+
+        if (role === 'main') mainReconnectAttempts++; else htfReconnectAttempts++;
+        const attempts = role === 'main' ? mainReconnectAttempts : htfReconnectAttempts;
+
         const priceEl = document.getElementById('price');
-        if (priceEl) priceEl.innerText = "تعذّر الاتصال بالسعر";
-    }
+        if (priceEl && role === 'main') {
+            priceEl.innerText = `⚠️ انقطع الاتصال (Code ${closeEvent.code}) - إعادة محاولة #${attempts}...`;
+        }
+        // إعادة الاتصال التلقائي بعد ثانيتين، مع حد أقصى للمحاولات حتى لا
+        // تستمر الصفحة في إعادة المحاولة للأبد في حالة حجب دائم
+        if (attempts <= 15) {
+            setTimeout(() => {
+                const activeSocket = role === 'main' ? ws : htfWs;
+                if (currentTF && socket === activeSocket) startLiveFeed();
+            }, 2000);
+        } else if (priceEl && role === 'main') {
+            priceEl.innerText = `⚠️ تعذّر الاتصال بـBybit نهائياً (Code ${closeEvent.code}) - الشبكة قد تحجب هذا الدومين`;
+        }
+    };
+
+    return { socket, pingHandle };
+}
+
+function startLiveFeed() {
+    // نقفل أي اتصالات سابقة قبل فتح اتصالات جديدة للفريم المختار
+    if (ws) { ws.onclose = null; ws.close(); }
+    if (htfWs) { htfWs.onclose = null; htfWs.close(); }
+    if (wsPingInterval) clearInterval(wsPingInterval);
+    if (htfPingInterval) clearInterval(htfPingInterval);
+
+    const interval = TF_TO_BYBIT_INTERVAL[currentTF] || '1';
+    const htfInterval = HTF_INTERVAL_MAP[currentTF] || '240';
+    const priceEl = document.getElementById('price');
+    if (priceEl) priceEl.innerText = 'جاري الاتصال...';
+
+    const main = openBybitKlineSocket(interval, 'XAUUSDT', (candleMsg) => {
+        upsertCandle(historicalData, candleMsg);
+        scheduleRender();
+    }, 'main');
+    ws = main.socket; wsPingInterval = main.pingHandle;
+
+    const htf = openBybitKlineSocket(htfInterval, 'XAUUSDT', (candleMsg) => {
+        upsertCandle(htfData, candleMsg);
+    }, 'htf');
+    htfWs = htf.socket; htfPingInterval = htf.pingHandle;
 }
 
 function updateChartData() {
@@ -387,31 +477,58 @@ function applyIndicatorsToUI(data) {
     document.getElementById('price').innerText = latest.close.toFixed(2);
 
     if (!window.TA) {
+        document.getElementById('signalTag').innerText = "⚠️ خطأ: indicators.js لم يتم تحميله";
         console.error("indicators.js غير محمّل - تأكد أن الملف موجود بجانب index.html بنفس الاسم بالضبط");
         return;
     }
-    // المؤشرات المتقدمة (EMA200, ADX..) تحتاج بيانات كافية لتُحسب بثقة
+    // المؤشرات المتقدمة (EMA200, ADX..) تحتاج بيانات كافية لتُحسب بثقة.
+    // بما إن البيانات بتتجمّع تدريجياً من WebSocket (مش دفعة واحدة زي REST)،
+    // نعرض تقدّم واضح للمستخدم بدل نص ثابت لحد ما تتوفر شمعات كافية.
     if (data.length < 60) {
-        document.getElementById('signalTag').innerText = "بانتظار تجميع بيانات كافية...";
+        document.getElementById('signalTag').innerText = `⏳ جاري تجميع البيانات (${data.length}/60)...`;
         return;
     }
 
-    const result = TA.generateProSignal(data, htfData.length ? htfData : null, []);
-    TA.applyProSignalToUI(result);
+    // نغلّف التنفيذ بمحاولة/إمساك حتى تظهر رسالة أي خطأ برمجي مباشرة على
+    // الشاشة نفسها (مفيد جداً للتشخيص من الموبايل بدون فتح Developer Console)
+    try {
+        const result = TA.generateProSignal(data, htfData.length ? htfData : null, []);
+        TA.applyProSignalToUI(result);
 
-    document.getElementById('vwapFilterVal').innerText =
-        result.direction === 'BUY' ? 'إيجابي (Bullish)' :
-        result.direction === 'SELL' ? 'سلبي (Bearish)' : 'محايد';
-    document.getElementById('macdFilterVal').innerText = result.rsi ? `RSI ${result.rsi}` : '--';
+        document.getElementById('vwapFilterVal').innerText =
+            result.direction === 'BUY' ? 'إيجابي (Bullish)' :
+            result.direction === 'SELL' ? 'سلبي (Bearish)' : 'محايد';
+        document.getElementById('macdFilterVal').innerText = result.rsi ? `RSI ${result.rsi}` : '--';
+    } catch (err) {
+        console.error("خطأ داخل generateProSignal:", err);
+        const tag = document.getElementById('signalTag');
+        tag.className = "signal-tag signal-wait";
+        tag.innerText = "⚠️ خطأ: " + err.message;
+        document.getElementById('signalPower').innerText = "راجع Console (F12) لتفاصيل أكثر";
+    }
 }
 
 function executeOrder() {
     alert("تم إرسال أمر التداول بنجاح!");
 }
 
-initChart();
-fetchKlines();
-setInterval(fetchKlines, 5000);
+// نبدأ الشارت والبيانات فقط بعد التأكد من نجاح تحميل مكتبة الرسم،
+// مع تجربة مصدر بديل (jsdelivr) تلقائياً لو المصدر الأساسي (unpkg) فشل
+loadScriptWithFallback(
+    [
+        "https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js",
+        "https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js",
+    ],
+    function () { // نجح التحميل
+        initChart();
+        startLiveFeed();
+    },
+    function () { // فشل كل المصادر
+        const priceEl = document.getElementById('price');
+        if (priceEl) priceEl.innerText = "⚠️ فشل تحميل مكتبة الشارت (مشكلة شبكة/حجب)";
+        console.error("تعذّر تحميل lightweight-charts من كل المصادر المتاحة");
+    }
+);
 </script>
 
 </body>
