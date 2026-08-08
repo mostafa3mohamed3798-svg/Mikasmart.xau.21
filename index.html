@@ -3,7 +3,8 @@
 <meta charset="UTF-8">  
 <meta name="viewport" content="width=device-width, initial-scale=1.0">  
 <title>Mika Pro - Strict Causal SMC Engine</title>  
-<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>  
+<!-- تحميل مكتبة الشارت أصبح ديناميكياً بعدة مصادر احتياطية داخل السكربت أسفل الصفحة،  
+     بدل رابط CDN واحد ثابت هنا كان يفشل بصمت (LightweightCharts is not defined) لو حُجب unpkg. -->  
 <style>  
 * { box-sizing: border-box; margin: 0; padding: 0; }  
 body {  
@@ -509,7 +510,7 @@ class StrictCausalSMCEngine {
             }  
         }  
     }  
-  
+
     // Step 5: OB/FVG extraction strictly linked to Displacement  
     extractCausalZones(subData, barIndex, bar) {  
         const mssDir = this.chain.internalMssEvent.payload.direction;  
@@ -671,8 +672,22 @@ class StrictCausalSMCEngine {
             decision: this.activeTrade ? `صفقة نشطة (${this.activeTrade.direction})` : `حالة النظام: ${this.state}`,  
             sweepInfo: this.chain.sweepEvent ? `${this.chain.sweepEvent.payload.direction}` : "None",  
             mssInfo: this.chain.internalMssEvent ? `${this.chain.internalMssEvent.payload.direction}` : "None",  
-            causalZone: this.ch
-              
+            causalZone: this.chain.causalZoneEvent ? `Zone: [${this.chain.causalZoneEvent.payload.zoneBottom.toFixed(1)} - ${this.chain.causalZoneEvent.payload.zoneTop.toFixed(1)}]` : "None",  
+            triggerInfo: this.state,  
+            suggestedSL: this.activeTrade ? +this.activeTrade.sl.toFixed(2) : null,  
+            suggestedTP1: this.activeTrade ? +this.activeTrade.tp1.toFixed(2) : null,  
+            suggestedTP2: this.activeTrade ? +this.activeTrade.tp2.toFixed(2) : null,  
+            causalZoneObj: this.chain.causalZoneEvent ? this.chain.causalZoneEvent.payload : null,  
+            eventLedgerCount: this.eventLedger.length,  
+            tradeHistoryCount: this.tradeHistory.length,  
+            lastTrade: this.tradeHistory.length > 0 ? this.tradeHistory[this.tradeHistory.length - 1] : null  
+        };  
+    }  
+}  
+  
+global.StrictCausalSMCEngine = StrictCausalSMCEngine;  
+})(window);  
+  
 /* ==========================================================================  
    [ربط الواجهة والرسوم البيانية]  
    ========================================================================== */  
@@ -707,8 +722,7 @@ function initChart() {
         chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });  
     });  
 }  
-  
-function changeTimeframe(tf, event) {  
+  function changeTimeframe(tf, event) {  
     document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));  
     if (event && event.target) event.target.classList.add('active');  
     currentTF = tf;  
@@ -725,6 +739,25 @@ function toggleOB() {
     renderMarkers();  
 }  
   
+// 12. الاتصال يجب ألا يفشل بصمت: عند فشل كل المصادر، نعرض السبب الحقيقي في مكان  
+// السعر بدل ترك "جاري التحميل..." معلّقة للأبد — هذا بالضبط ما كان يُخفي المشكلة سابقاً.  
+function setConnectionStatus(ok, error) {  
+    const badge = document.getElementById("stateBadge");  
+    const priceEl = document.getElementById("price");  
+    if (ok) {  
+        badge.style.color = '';  
+        badge.parentElement && badge.parentElement.classList; // no-op, keep default style  
+        return;  
+    }  
+    if (priceEl.innerText === 'جاري التحميل...' || priceEl.dataset.stale === '1') {  
+        priceEl.innerText = 'تعذر الاتصال بالبيانات';  
+        priceEl.dataset.stale = '1';  
+    }  
+    const reason = error && error.message ? error.message : 'خطأ غير معروف';  
+    badge.innerText = `فشل الاتصال: ${reason}`;  
+    badge.style.color = '#f87171';  
+}  
+  
 async function fetchBybitData() {  
     // حارس بسيط لمنع تداخل الطلبات إن تأخرت الشبكة أكثر من دورة الاستطلاع  
     if (isFetching) return;  
@@ -733,11 +766,38 @@ async function fetchBybitData() {
         let interval = '1';  
         if (currentTF === '5m') interval = '5';  
         if (currentTF === '15m') interval = '15';  
+  
+        // بعض الشبكات/المناطق تحجب api.bybit.com (CORS أو حجب جغرافي عبر Cloudflare)  
+        // بينما يعمل المرآة الرسمية البديلة api.bytick.com بنفس الاستجابة تماماً.  
+        // نجرب المصدر الأساسي ثم نتحول تلقائياً للمرآة عند الفشل، بدل التجمد الصامت.  
+        const endpoints = [  
+            `https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=200`,  
+            `https://api.bytick.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=200`  
+        ];  
+  
+        let json = null;  
+        let lastError = null;  
+        for (const url of endpoints) {  
+            try {  
+                const res = await fetch(url, { cache: 'no-store' });  
+                if (!res.ok) { lastError = new Error(`HTTP ${res.status}`); continue; }  
+                const candidate = await res.json();  
+                if (candidate && candidate.retCode === 0 && candidate.result && candidate.result.list) {  
+                    json = candidate;  
+                    break;  
+                } else {  
+                    lastError = new Error(candidate && candidate.retMsg ? candidate.retMsg : 'استجابة غير صالحة من المصدر');  
+                }  
+            } catch (netErr) {  
+                lastError = netErr; // فشل شبكة/CORS: جرّب المرآة التالية  
+            }  
+        }  
+  
+        if (!json) {  
+            throw lastError || new Error('تعذّر الاتصال بأي مصدر بيانات');  
+        }  
           
-        const res = await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=200`);  
-        const json = await res.json();  
-          
-        if (json && json.result && json.result.list && json.result.list.length > 0) {  
+        if (json.result.list.length > 0) {  
             historicalData = json.result.list.reverse().map(item => ({  
                 time: parseInt(item[0]) / 1000,  
                 open: parseFloat(item[1]),  
@@ -749,6 +809,7 @@ async function fetchBybitData() {
         }  
   
         if (!historicalData || historicalData.length < 60) return;  
+        setConnectionStatus(true);  
   
         // آخر شمعة في المصفوفة لم تُغلق بعد (شمعة حية Live) — لا يجوز أن تُستخدم في  
         // بناء الهيكل/السلسلة السببية (Look-ahead)، لكنها المصدر الحقيقي للسعر اللحظي.  
@@ -780,6 +841,7 @@ async function fetchBybitData() {
         renderMarkers();  
     } catch (e) {  
         console.error("Bybit Error", e);  
+        setConnectionStatus(false, e);  
     } finally {  
         isFetching = false;  
     }  
@@ -811,7 +873,9 @@ function updateUI(res, formingBar) {
     // السعر المعروض دائماً هو سعر الشمعة الحية (اللحظية) وليس آخر شمعة مُغلقة فقط،  
     // لتبقى الواجهة حية فعلاً بين إغلاق شمعة وأخرى.  
     const livePrice = formingBar ? formingBar.close : res.price;  
-    document.getElementById("price").innerText = livePrice.toFixed(2);  
+    const priceEl = document.getElementById("price");  
+    priceEl.innerText = livePrice.toFixed(2);  
+    priceEl.dataset.stale = '0';  
     document.getElementById("dealingRangeVal").innerText = res.dealingRange;  
     document.getElementById("tradeLifecycleVal").innerText = res.lifecycle;  
     document.getElementById("stateBadge").innerText = `حالة النظام: ${res.lifecycle}`;  
@@ -870,9 +934,59 @@ function updateUI(res, formingBar) {
     }  
 }  
   
-initChart();  
-fetchBybitData();  
-pollTimer = setInterval(fetchBybitData, 5000);  
+// 13. نفس مشكلة Bybit تماماً لكن لمكتبة الشارت: مصدر CDN واحد كان يفشل بصمت لو حُجب  
+// unpkg.com في شبكة/منطقة المستخدم، فيتحول الخطأ إلى Uncaught ReferenceError عند  
+// استدعاء initChart(). الحل: تحميل ديناميكي بعدة مرايا CDN بالترتيب، مع فشل واضح  
+// للمستخدم بدل شاشة بيضاء أو Exception غير معالج.  
+function loadScript(src) {  
+    return new Promise((resolve, reject) => {  
+        const s = document.createElement('script');  
+        s.src = src;  
+        s.onload = () => resolve(src);  
+        s.onerror = () => reject(new Error(`تعذر تحميل: ${src}`));  
+        document.head.appendChild(s);  
+    });  
+}  
+  
+async function loadLightweightCharts() {  
+    if (window.LightweightCharts) return true; // مُحمّلة مسبقاً  
+    const mirrors = [  
+        'https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js',  
+        'https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js',  
+        'https://cdnjs.cloudflare.com/ajax/libs/lightweight-charts/4.1.1/lightweight-charts.standalone.production.js'  
+    ];  
+    for (const src of mirrors) {  
+        try {  
+            await loadScript(src);  
+            if (window.LightweightCharts) return true;  
+        } catch (e) {  
+            console.error(e);  
+        }  
+    }  
+    return false;  
+}  
+  
+function showFatalError(message) {  
+    const priceEl = document.getElementById("price");  
+    const badge = document.getElementById("stateBadge");  
+    if (priceEl) priceEl.innerText = 'تعذر تحميل الشارت';  
+    if (badge) { badge.innerText = `خطأ: ${message}`; badge.style.color = '#f87171'; }  
+    const container = document.getElementById('chart');  
+    if (container) container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f87171;font-size:0.85rem;padding:12px;text-align:center;">${message}</div>`;  
+}  
+  
+async function boot() {  
+    const ok = await loadLightweightCharts();  
+    if (!ok || !window.LightweightCharts) {  
+        showFatalError('تعذر تحميل مكتبة الرسم البياني من كل المصادر المتاحة (unpkg / jsdelivr / cdnjs). تحقق من الاتصال بالإنترنت أو حجب هذه النطاقات في شبكتك.');  
+        return;  
+    }  
+    initChart();  
+    fetchBybitData();  
+    pollTimer = setInterval(fetchBybitData, 5000);  
+}  
+  
+boot();  
 </script> 
 </body>  
 </html>
