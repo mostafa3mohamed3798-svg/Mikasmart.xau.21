@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Mika Pro Gold - Analysis Engine v10.5</title>
 
 <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
@@ -146,44 +147,55 @@ body {
 }
 
 .scores-box {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
+    display: flex;
+    justify-content: space-around;
     width: 100%;
     margin-top: 8px;
     background: rgba(4, 6, 11, 0.6);
-    padding: 8px;
+    padding: 6px;
     border-radius: 6px;
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     color: #94a3b8;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
-.score-item {
+.scores-box span {
+    color: #fff;
+    font-weight: bold;
+}
+
+.confidence-box {
     display: flex;
-    justify-content: space-between;
-    gap: 5px;
+    justify-content: space-around;
+    width: 100%;
+    margin-top: 8px;
+    background: rgba(4, 6, 11, 0.6);
+    padding: 7px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: #94a3b8;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
-.score-item span {
+.confidence-box span {
     color: #fff;
     font-weight: bold;
 }
 
 .targets-box {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 5px;
+    display: flex;
+    justify-content: space-around;
     width: 100%;
     margin-top: 8px;
     background: #04060b;
     padding: 10px;
     border-radius: 8px;
     border: 1px solid #1e293b;
-    font-size: 0.78rem;
-}
-
-.target-item {
-    text-align: center;
+    font-size: 0.82rem;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .target-item span {
@@ -328,7 +340,7 @@ body {
 
     <div class="symbol-name">
         Bybit WebSocket Linear - XAUUSDT
-        (Wilder ADX + Dual Confidence Engine)
+        (Wilder Fixed & Dual Confidence Engine)
     </div>
 
     <div id="price" class="price-display">
@@ -336,7 +348,7 @@ body {
     </div>
 
     <div id="wsStatus" class="status-badge">
-        جاري الاتصال بـ WebSocket
+        جاري الاتصال...
     </div>
 
     <div class="market-stats-bar">
@@ -360,27 +372,22 @@ body {
     </div>
 
     <div class="scores-box">
-
-        <div class="score-item">
-            <span>Market Strength</span>
+        <div>
+            Market Strength:
             <span id="marketStrengthVal">0 / 100</span>
         </div>
+    </div>
 
-        <div class="score-item">
-            <span>BUY Confidence</span>
+    <div class="confidence-box">
+        <div>
+            BUY Confidence:
             <span id="buyConfidenceVal">0 / 100</span>
         </div>
 
-        <div class="score-item">
-            <span>SELL Confidence</span>
+        <div>
+            SELL Confidence:
             <span id="sellConfidenceVal">0 / 100</span>
         </div>
-
-        <div class="score-item">
-            <span>Entry Confidence</span>
-            <span id="entryConfidenceVal">0 / 100</span>
-        </div>
-
     </div>
 
     <div class="targets-box">
@@ -405,7 +412,7 @@ body {
 </div>
 
 <div id="logBox" class="log-box">
-    Engine v10.5 initialized...
+    Engine v10.5 initialized with strict Wilder ADX, corrected EMA 9/21 and gap validation...
 </div>
 
 <div class="filters-dashboard">
@@ -438,14 +445,14 @@ body {
 
     </div>
 
-    <div class="filter-card" style="grid-column:span 2;">
+    <div class="filter-card"
+         style="grid-column:span 2;">
 
         <div class="filter-label"
              style="display:flex;justify-content:space-between;">
 
             <span>
-                Range Close Position
-                (Momentum Filter)
+                Range Close Position (Momentum Filter)
             </span>
 
             <span id="marketFilterText"
@@ -580,17 +587,19 @@ const TA = (function () {
     }
 
     function last(arr) {
-        return arr && arr.length > 0
+        return arr && arr.length
             ? arr[arr.length - 1]
             : null;
     }
 
 
     /* =====================================================
-       EMA
-       - يحافظ على طول المصفوفة
-       - لا يعامل null كصفر
-       - يبدأ بعد توفر period قيم صحيحة
+       EMA 9 / EMA 21
+       Correct EMA:
+       - Initial value = SMA
+       - Then standard EMA recursive calculation
+       - Null/NaN values are ignored safely
+       - Output keeps the original array length
        ===================================================== */
 
     function ema(values, period) {
@@ -601,45 +610,111 @@ const TA = (function () {
             return out;
         }
 
-        const clean = values.map(v =>
-            Number.isFinite(Number(v))
-                ? Number(v)
-                : null
-        );
+        const k = 2 / (period + 1);
 
-        let validCount = 0;
-        let sum = 0;
-        let seedIndex = -1;
+        let validValues = [];
+        let firstIndex = -1;
 
-        for (let i = 0; i < clean.length; i++) {
+        for (let i = 0; i < values.length; i++) {
 
-            if (clean[i] === null) {
+            const value = Number(values[i]);
+
+            if (Number.isFinite(value)) {
+
+                validValues.push(value);
+
+                if (firstIndex === -1) {
+                    firstIndex = i;
+                }
+
+                if (validValues.length === period) {
+                    break;
+                }
+            }
+        }
+
+        if (validValues.length < period || firstIndex === -1) {
+            return out;
+        }
+
+        let prevEMA =
+            validValues.reduce((sum, value) => sum + value, 0) / period;
+
+        out[firstIndex + period - 1] = prevEMA;
+
+        for (
+            let i = firstIndex + period;
+            i < values.length;
+            i++
+        ) {
+
+            const value = Number(values[i]);
+
+            if (!Number.isFinite(value)) {
+                out[i] = prevEMA;
                 continue;
             }
 
-            sum += clean[i];
-            validCount++;
+            prevEMA =
+                ((value - prevEMA) * k) + prevEMA;
 
-            if (validCount === period) {
+            out[i] = prevEMA;
+        }
 
-                seedIndex = i;
+        return out;
+    }
 
-                let previous = sum / period;
+
+    /* =====================================================
+       WILDER SMOOTHING
+       ===================================================== */
+
+    function wilderSmooth(values, period) {
+
+        const out = new Array(values.length).fill(null);
+
+        if (!Array.isArray(values) || values.length < period) {
+            return out;
+        }
+
+        let sum = 0;
+        let count = 0;
+        let firstIndex = -1;
+
+        for (let i = 0; i < values.length; i++) {
+
+            const value = Number(values[i]);
+
+            if (!Number.isFinite(value)) {
+                continue;
+            }
+
+            if (firstIndex === -1) {
+                firstIndex = i;
+            }
+
+            sum += value;
+            count++;
+
+            if (count === period) {
+
+                let previous = sum;
 
                 out[i] = previous;
 
-                const k = 2 / (period + 1);
+                for (let j = i + 1; j < values.length; j++) {
 
-                for (let j = i + 1; j < clean.length; j++) {
+                    const current = Number(values[j]);
 
-                    if (clean[j] === null) {
-                        out[j] = null;
+                    if (!Number.isFinite(current)) {
+                        out[j] = previous;
                         continue;
                     }
 
                     previous =
-                        previous +
-                        k * (clean[j] - previous);
+                        previous -
+                        (previous / period) +
+                        current;
 
                     out[j] = previous;
                 }
@@ -653,73 +728,15 @@ const TA = (function () {
 
 
     /* =====================================================
-       WILDER SMOOTHING
-       مهم جدًا لـ ATR / DI / ADX
-
-       الناتج هنا هو Wilder SUM وليس المتوسط.
-       ده مطابق للصيغة المستخدمة في DI/ATR.
-       ===================================================== */
-
-    function wilderSmooth(values, period) {
-
-        const out = new Array(values.length).fill(null);
-
-        if (!Array.isArray(values) || values.length === 0) {
-            return out;
-        }
-
-        let sum = 0;
-        let count = 0;
-        let seedIndex = -1;
-
-        for (let i = 0; i < values.length; i++) {
-
-            const value = Number(values[i]);
-
-            if (!Number.isFinite(value)) {
-                continue;
-            }
-
-            sum += value;
-            count++;
-
-            if (count === period) {
-
-                seedIndex = i;
-
-                out[i] = sum;
-
-                for (let j = i + 1; j < values.length; j++) {
-
-                    const current = Number(values[j]);
-
-                    if (!Number.isFinite(current)) {
-                        out[j] = null;
-                        continue;
-                    }
-
-                    out[j] =
-                        out[j - 1] -
-                        (out[j - 1] / period) +
-                        current;
-                }
-
-                break;
-            }
-        }
-
-        return out;
-    }
-
-
-    /* =====================================================
-       RSI - Wilder
+       RSI — WILDER 14
        ===================================================== */
 
     function calculateRSI(data, period = 14) {
 
         const closes = closesOf(data);
-        const out = new Array(closes.length).fill(null);
+
+        const out =
+            new Array(closes.length).fill(null);
 
         if (closes.length < period + 1) {
             return out;
@@ -730,7 +747,8 @@ const TA = (function () {
 
         for (let i = 1; i <= period; i++) {
 
-            const diff = closes[i] - closes[i - 1];
+            const diff =
+                closes[i] - closes[i - 1];
 
             if (diff > 0) {
                 gains += diff;
@@ -743,7 +761,8 @@ const TA = (function () {
         let avgLoss = losses / period;
 
         if (avgLoss === 0) {
-            out[period] = avgGain === 0 ? 50 : 100;
+            out[period] =
+                avgGain === 0 ? 50 : 100;
         } else {
 
             const rs = avgGain / avgLoss;
@@ -752,7 +771,11 @@ const TA = (function () {
                 100 - (100 / (1 + rs));
         }
 
-        for (let i = period + 1; i < closes.length; i++) {
+        for (
+            let i = period + 1;
+            i < closes.length;
+            i++
+        ) {
 
             const diff =
                 closes[i] - closes[i - 1];
@@ -772,10 +795,14 @@ const TA = (function () {
                 period;
 
             if (avgLoss === 0) {
-                out[i] = avgGain === 0 ? 50 : 100;
+
+                out[i] =
+                    avgGain === 0 ? 50 : 100;
+
             } else {
 
-                const rs = avgGain / avgLoss;
+                const rs =
+                    avgGain / avgLoss;
 
                 out[i] =
                     100 - (100 / (1 + rs));
@@ -787,37 +814,71 @@ const TA = (function () {
 
 
     /* =====================================================
-       ADX + DI
-       Wilder implementation
+       TRUE RANGE
+       ===================================================== */
 
-       الإصلاح الأساسي:
-       لا نحول DX غير المتاح إلى 0.
+    function calculateTrueRange(data) {
 
-       ADX يبدأ فقط بعد توفر:
-       1) Wilder smoothing للـ TR/DM
-       2) عدد كافٍ من قيم DX
-       3) Wilder seed للـ DX
+        const tr =
+            new Array(data.length).fill(null);
+
+        for (let i = 0; i < data.length; i++) {
+
+            const candle = data[i];
+
+            if (i === 0) {
+
+                tr[i] =
+                    candle.high - candle.low;
+
+                continue;
+            }
+
+            const previous =
+                data[i - 1];
+
+            tr[i] = Math.max(
+                candle.high - candle.low,
+                Math.abs(
+                    candle.high - previous.close
+                ),
+                Math.abs(
+                    candle.low - previous.close
+                )
+            );
+        }
+
+        return tr;
+    }
+
+
+    /* =====================================================
+       ADX / +DI / -DI
+       TRUE WILDER INITIALIZATION
+
+       Important:
+       DX null values remain null.
+       They are NOT converted to zero.
        ===================================================== */
 
     function calculateADXAndDI(data, period = 14) {
 
         const len = data.length;
 
-        const adxOut =
+        const adx =
             new Array(len).fill(null);
 
-        const plusDIOut =
+        const plusDI =
             new Array(len).fill(null);
 
-        const minusDIOut =
+        const minusDI =
             new Array(len).fill(null);
 
         if (len < (period * 2) + 1) {
-
             return {
-                adx: adxOut,
-                plusDI: plusDIOut,
-                minusDI: minusDIOut
+                adx,
+                plusDI,
+                minusDI
             };
         }
 
@@ -832,64 +893,65 @@ const TA = (function () {
             new Array(len).fill(null);
 
 
-        /* أول شمعة */
+        /* ---------------------------------------------
+           TR / +DM / -DM
+           --------------------------------------------- */
 
-        tr[0] =
-            Math.max(
-                0,
-                data[0].high - data[0].low
-            );
-
-        plusDM[0] = 0;
-        minusDM[0] = 0;
-
-
-        /* TR + Directional Movement */
-
-        for (let i = 1; i < len; i++) {
+        for (let i = 0; i < len; i++) {
 
             const current = data[i];
-            const previous = data[i - 1];
 
-            const highDiff =
+            if (i === 0) {
+
+                tr[i] =
+                    current.high - current.low;
+
+                plusDM[i] = 0;
+                minusDM[i] = 0;
+
+                continue;
+            }
+
+            const previous =
+                data[i - 1];
+
+            const upMove =
                 current.high - previous.high;
 
-            const lowDiff =
+            const downMove =
                 previous.low - current.low;
 
-
-            tr[i] =
-                Math.max(
-                    current.high - current.low,
-                    Math.abs(
-                        current.high - previous.close
-                    ),
-                    Math.abs(
-                        current.low - previous.close
-                    )
-                );
-
+            tr[i] = Math.max(
+                current.high - current.low,
+                Math.abs(
+                    current.high - previous.close
+                ),
+                Math.abs(
+                    current.low - previous.close
+                )
+            );
 
             plusDM[i] =
                 (
-                    highDiff > lowDiff &&
-                    highDiff > 0
+                    upMove > downMove &&
+                    upMove > 0
                 )
-                    ? highDiff
+                    ? upMove
                     : 0;
-
 
             minusDM[i] =
                 (
-                    lowDiff > highDiff &&
-                    lowDiff > 0
+                    downMove > upMove &&
+                    downMove > 0
                 )
-                    ? lowDiff
+                    ? downMove
                     : 0;
         }
 
 
-        /* Wilder sums */
+        /* ---------------------------------------------
+           Wilder smoothing
+           --------------------------------------------- */
 
         const smoothTR =
             wilderSmooth(tr, period);
@@ -901,113 +963,98 @@ const TA = (function () {
             wilderSmooth(minusDM, period);
 
 
+        /* ---------------------------------------------
+           DI + DX
+           --------------------------------------------- */
+
         const dx =
             new Array(len).fill(null);
-
-
-        /* DI + DX */
 
         for (let i = 0; i < len; i++) {
 
             if (
                 smoothTR[i] === null ||
                 smoothPlusDM[i] === null ||
-                smoothMinusDM[i] === null
+                smoothMinusDM[i] === null ||
+                smoothTR[i] <= 0
             ) {
                 continue;
             }
 
-            if (smoothTR[i] <= 0) {
-                continue;
-            }
-
-
-            const plusDI =
+            const pDI =
                 (smoothPlusDM[i] /
-                    smoothTR[i]) * 100;
+                 smoothTR[i]) * 100;
 
-            const minusDI =
+            const mDI =
                 (smoothMinusDM[i] /
-                    smoothTR[i]) * 100;
+                 smoothTR[i]) * 100;
 
-
-            plusDIOut[i] = plusDI;
-            minusDIOut[i] = minusDI;
-
+            plusDI[i] = pDI;
+            minusDI[i] = mDI;
 
             const diSum =
-                plusDI + minusDI;
+                pDI + mDI;
 
-
-            if (diSum > 0) {
+            if (diSum <= 0) {
+                dx[i] = 0;
+            } else {
 
                 dx[i] =
                     (
-                        Math.abs(
-                            plusDI - minusDI
-                        ) / diSum
+                        Math.abs(pDI - mDI) /
+                        diSum
                     ) * 100;
-
-            } else {
-
-                dx[i] = 0;
             }
         }
 
 
-        /* =================================================
-           ADX SEED
+        /* ---------------------------------------------
+           IMPORTANT:
 
-           هنا لا يوجد:
-           dx.map(v => v || 0)
+           لا نحول null إلى 0.
 
-           لأن null ليس صفرًا.
-
-           نأخذ أول period قيم DX صالحة
-           ثم نطبق Wilder smoothing.
-           ================================================= */
-
-        const adxSeedValues =
-            new Array(len).fill(null);
+           أول ADX صحيح يكون بعد توفر
+           period قيم DX صحيحة.
+           --------------------------------------------- */
 
         let dxCount = 0;
         let dxSum = 0;
-        let firstAdxIndex = -1;
-
+        let firstADXIndex = -1;
 
         for (let i = 0; i < len; i++) {
 
             if (
-                dx[i] === null ||
-                !Number.isFinite(dx[i])
+                dx[i] !== null &&
+                Number.isFinite(dx[i])
             ) {
-                continue;
-            }
 
-            dxSum += dx[i];
-            dxCount++;
+                dxCount++;
+                dxSum += dx[i];
 
+                if (dxCount === period) {
 
-            if (dxCount === period) {
+                    firstADXIndex = i;
 
-                firstAdxIndex = i;
+                    adx[i] =
+                        dxSum / period;
 
-                adxSeedValues[i] =
-                    dxSum / period;
-
-                break;
+                    break;
+                }
             }
         }
 
 
-        if (firstAdxIndex !== -1) {
+        /* ---------------------------------------------
+           Wilder recursive ADX
+           --------------------------------------------- */
 
-            adxOut[firstAdxIndex] =
-                adxSeedValues[firstAdxIndex];
+        if (firstADXIndex !== -1) {
 
+            let previousADX =
+                adx[firstADXIndex];
 
             for (
-                let i = firstAdxIndex + 1;
+                let i = firstADXIndex + 1;
                 i < len;
                 i++
             ) {
@@ -1016,79 +1063,48 @@ const TA = (function () {
                     dx[i] === null ||
                     !Number.isFinite(dx[i])
                 ) {
-                    adxOut[i] = null;
                     continue;
                 }
 
-
-                adxOut[i] =
+                previousADX =
                     (
-                        (
-                            adxOut[i - 1] *
-                            (period - 1)
-                        ) +
+                        (previousADX * (period - 1)) +
                         dx[i]
                     ) / period;
+
+                adx[i] =
+                    previousADX;
             }
         }
 
 
         return {
-            adx: adxOut,
-            plusDI: plusDIOut,
-            minusDI: minusDIOut
+            adx,
+            plusDI,
+            minusDI
         };
     }
 
 
     /* =====================================================
-       ATR - Wilder
+       ATR — WILDER
        ===================================================== */
 
     function calculateATR(data, period = 14) {
 
         const tr =
-            data.map((c, i) => {
+            calculateTrueRange(data);
 
-                if (i === 0) {
-
-                    return Math.max(
-                        0,
-                        c.high - c.low
-                    );
-                }
-
-                const prevClose =
-                    data[i - 1].close;
-
-                return Math.max(
-                    c.high - c.low,
-                    Math.abs(
-                        c.high - prevClose
-                    ),
-                    Math.abs(
-                        c.low - prevClose
-                    )
-                );
-            });
-
-
-        const smoothed =
-            wilderSmooth(tr, period);
-
-
-        return smoothed.map(value =>
-            value === null
-                ? null
-                : value / period
+        return wilderSmooth(
+            tr,
+            period
         );
     }
 
 
     /* =====================================================
        VWAP
-       - Daily UTC reset
-       - ISO date key
+       UTC DATE KEY
        ===================================================== */
 
     function calculateVWAP(data) {
@@ -1098,20 +1114,19 @@ const TA = (function () {
 
         let cumulativeTPV = 0;
         let cumulativeVolume = 0;
-        let lastDateKey = null;
 
+        let lastDateKey = null;
 
         for (let i = 0; i < data.length; i++) {
 
             const candle = data[i];
 
-            const dateObj =
-                new Date(candle.time * 1000);
-
-
             const dateKey =
-                dateObj.toISOString().split('T')[0];
-
+                new Date(
+                    candle.time * 1000
+                )
+                .toISOString()
+                .split('T')[0];
 
             if (dateKey !== lastDateKey) {
 
@@ -1121,7 +1136,6 @@ const TA = (function () {
                 lastDateKey = dateKey;
             }
 
-
             const typicalPrice =
                 (
                     candle.high +
@@ -1129,304 +1143,874 @@ const TA = (function () {
                     candle.close
                 ) / 3;
 
-
             const volume =
                 Number(candle.volume);
 
-
             if (
-                Number.isFinite(typicalPrice) &&
-                Number.isFinite(volume) &&
-                volume >= 0
+                !Number.isFinite(volume) ||
+                volume < 0
             ) {
-
-                cumulativeTPV +=
-                    typicalPrice * volume;
-
-                cumulativeVolume +=
-                    volume;
+                out[i] = null;
+                continue;
             }
 
+            cumulativeTPV +=
+                typicalPrice * volume;
+
+            cumulativeVolume +=
+                volume;
 
             out[i] =
                 cumulativeVolume > 0
-                    ? cumulativeTPV /
-                      cumulativeVolume
+                    ? cumulativeTPV / cumulativeVolume
                     : null;
         }
 
-
         return out;
+    }
+    <script>
+
+/* =========================================================
+   CONTINUITY VALIDATION
+   ========================================================= */
+
+function validateDataContinuity(data, tfMinutes = '1') {
+
+    if (!Array.isArray(data) || data.length < 35) {
+        return false;
+    }
+
+    const intervalSec =
+        parseInt(tfMinutes, 10) * 60;
+
+    if (!Number.isFinite(intervalSec) || intervalSec <= 0) {
+        return false;
+    }
+
+    for (let i = 1; i < data.length; i++) {
+
+        const previous = data[i - 1];
+        const current = data[i];
+
+        const diff =
+            current.time - previous.time;
+
+        if (!Number.isFinite(diff) || diff <= 0) {
+            return false;
+        }
+
+        /*
+         * الفريمات العادية:
+         * نسمح بانحراف صغير فقط في توقيت الشموع.
+         */
+        if (tfMinutes !== '240') {
+
+            if (diff > intervalSec * 1.5) {
+                return false;
+            }
+
+            continue;
+        }
+
+        /*
+         * 4H:
+         *
+         * لا نتجاهل الفجوات.
+         * نسمح فقط بالفجوات المعقولة الناتجة
+         * عن فترات توقف السوق / عطلة نهاية الأسبوع.
+         *
+         * الحد هنا 3.5 × الفاصل الطبيعي.
+         */
+        if (diff > intervalSec * 3.5) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+/* =========================================================
+   RANGE CLOSE POSITION
+   ========================================================= */
+
+function analyzeRangePosition(candle) {
+
+    if (!candle) {
+        return {
+            bullish: 50,
+            bearish: 50
+        };
+    }
+
+    const range =
+        candle.high - candle.low;
+
+    if (
+        !Number.isFinite(range) ||
+        range <= 0
+    ) {
+        return {
+            bullish: 50,
+            bearish: 50
+        };
+    }
+
+    const bodyPosition =
+        (
+            candle.close -
+            candle.low
+        ) / range;
+
+    const bullishPct =
+        Math.round(
+            bodyPosition * 100
+        );
+
+    return {
+        bullish: Math.max(
+            5,
+            Math.min(95, bullishPct)
+        ),
+
+        bearish: Math.max(
+            5,
+            Math.min(
+                95,
+                100 - bullishPct
+            )
+        )
+    };
+}
+
+
+/* =========================================================
+   PRO SIGNAL ENGINE
+   ========================================================= */
+
+function generateProSignal(
+    fullData,
+    currentTF,
+    currentSpreadPct,
+    previousSignalDirection
+) {
+
+    if (
+        !validateDataContinuity(
+            fullData,
+            currentTF
+        )
+    ) {
+        return null;
     }
 
 
     /* =====================================================
-       DATA CONTINUITY
+       SPREAD FILTER
        ===================================================== */
 
-    function validateDataContinuity(
-        data,
-        tfMinutes = '1'
+    if (
+        !Number.isFinite(currentSpreadPct) ||
+        currentSpreadPct > 0.04
     ) {
 
-        if (
-            !Array.isArray(data) ||
-            data.length < 35
-        ) {
-            return false;
-        }
+        const analysisCandle =
+            fullData[fullData.length - 2];
 
+        return {
 
-        const intervalSec =
-            parseInt(tfMinutes, 10) * 60;
+            price:
+                analysisCandle
+                    ? analysisCandle.close
+                    : 0,
 
+            direction: 'WAIT',
 
-        if (
-            !Number.isFinite(intervalSec) ||
-            intervalSec <= 0
-        ) {
-            return false;
-        }
+            marketStrength: 0,
 
+            buyConfidence: 0,
 
-        for (let i = 1; i < data.length; i++) {
+            sellConfidence: 0,
 
-            const diff =
-                data[i].time -
-                data[i - 1].time;
+            decision:
+                `تم حظر الإشارة بسبب ارتفاع السبريد (${currentSpreadPct.toFixed(3)}%)`,
 
+            rsi: '--',
 
-            if (!Number.isFinite(diff) || diff <= 0) {
-                return false;
-            }
+            adx: '--',
 
+            rvol: '--',
 
-            /*
-             * الفريمات القصيرة:
-             * السماح بهامش بسيط فقط.
-             */
+            candleStats:
+                analyzeRangePosition(
+                    analysisCandle
+                ),
 
-            if (tfMinutes !== '240') {
-
-                if (
-                    diff >
-                    intervalSec * 1.5
-                ) {
-                    return false;
-                }
-
-                continue;
-            }
-
-
-            /*
-             * 4H:
-             * لا نلغي فحص الفجوات.
-             *
-             * السماح بفجوة أكبر بسبب
-             * إغلاق السوق/الفترة الأسبوعية،
-             * لكن ليس بأي فجوة عشوائية.
-             */
-
-            const normalLimit =
-                intervalSec * 1.5;
-
-            const extendedLimit =
-                intervalSec * 3.5;
-
-
-            if (diff > extendedLimit) {
-
-                /*
-                 * نسمح فقط بفجوة كبيرة
-                 * إذا كان هناك انتقال واضح
-                 * بين أيام مختلفة.
-                 */
-
-                const previousDate =
-                    new Date(
-                        data[i - 1].time * 1000
-                    );
-
-                const currentDate =
-                    new Date(
-                        data[i].time * 1000
-                    );
-
-
-                const previousDay =
-                    previousDate
-                        .toISOString()
-                        .split('T')[0];
-
-                const currentDay =
-                    currentDate
-                        .toISOString()
-                        .split('T')[0];
-
-
-                if (previousDay === currentDay) {
-                    return false;
-                }
-
-                /*
-                 * حتى مع اختلاف اليوم،
-                 * لا نقبل فجوة ضخمة جدًا.
-                 */
-
-                if (
-                    diff >
-                    intervalSec * 18
-                ) {
-                    return false;
-                }
-
-            } else if (
-                diff > normalLimit &&
-                diff <= extendedLimit
-            ) {
-
-                /*
-                 * فجوة صغيرة نسبيًا.
-                 * مقبولة في 4H.
-                 */
-
-                continue;
-            }
-        }
-
-
-        return true;
+            suggestedSL: null,
+            suggestedTP1: null,
+            suggestedTP2: null
+        };
     }
+
+
+    /* =====================================================
+       آخر شمعة مغلقة
+       ===================================================== */
+
+    if (fullData.length < 3) {
+        return null;
+    }
+
+    const analysisCandle =
+        fullData[fullData.length - 2];
+
+    const currentPrice =
+        analysisCandle.close;
+
+    /*
+     * آخر شمعة جارية لا تدخل في المؤشرات.
+     */
+    const closedData =
+        fullData.slice(0, -1);
+
+    if (closedData.length < 35) {
+        return null;
+    }
+
+
+    /* =====================================================
+       INDICATORS
+       ===================================================== */
+
+    const rsiArr =
+        calculateRSI(
+            closedData,
+            14
+        );
+
+    const adxData =
+        calculateADXAndDI(
+            closedData,
+            14
+        );
+
+    const atrArr =
+        calculateATR(
+            closedData,
+            14
+        );
+
+    const vwapArr =
+        calculateVWAP(
+            closedData
+        );
+
+    const closes =
+        closesOf(closedData);
+
+
+    /*
+     * EMA 9 / EMA 21
+     */
+    const emaFast =
+        ema(
+            closes,
+            9
+        );
+
+    const emaSlow =
+        ema(
+            closes,
+            21
+        );
+
+
+    /* =====================================================
+       CURRENT VALUES
+       ===================================================== */
+
+    const currentRsi =
+        last(rsiArr);
+
+    const currentAdx =
+        last(adxData.adx);
+
+    const currentPlusDI =
+        last(adxData.plusDI);
+
+    const currentMinusDI =
+        last(adxData.minusDI);
+
+    const vwapVal =
+        last(vwapArr);
+
+    const fastVal =
+        last(emaFast);
+
+    const slowVal =
+        last(emaSlow);
+
+    let atr =
+        last(atrArr);
+
+
+    if (
+        currentRsi === null ||
+        currentAdx === null ||
+        currentPlusDI === null ||
+        currentMinusDI === null ||
+        fastVal === null ||
+        slowVal === null ||
+        !Number.isFinite(currentRsi) ||
+        !Number.isFinite(currentAdx) ||
+        !Number.isFinite(currentPlusDI) ||
+        !Number.isFinite(currentMinusDI) ||
+        !Number.isFinite(fastVal) ||
+        !Number.isFinite(slowVal)
+    ) {
+        return null;
+    }
+
+
+    /* =====================================================
+       ATR FALLBACK
+       ===================================================== */
+
+    if (
+        !Number.isFinite(atr) ||
+        atr <= 0
+    ) {
+        atr =
+            currentPrice * 0.002;
+    }
+
+
+    /* =====================================================
+       RVOL
+       ===================================================== */
+
+    const past20Volumes =
+        closedData
+            .slice(-21, -1)
+            .map(
+                d => Number(d.volume)
+            )
+            .filter(
+                v =>
+                    Number.isFinite(v) &&
+                    v >= 0
+            );
+
+    let avgVol = 0;
+
+    if (past20Volumes.length > 0) {
+
+        avgVol =
+            past20Volumes.reduce(
+                (sum, value) =>
+                    sum + value,
+                0
+            ) /
+            past20Volumes.length;
+    }
+
+    const candleVolume =
+        Number(
+            analysisCandle.volume
+        );
+
+    const rvol =
+        avgVol > 0
+            ? candleVolume / avgVol
+            : 1;
 
 
     /* =====================================================
        RANGE POSITION
        ===================================================== */
 
-    function analyzeRangePosition(candle) {
-
-        if (!candle) {
-
-            return {
-                bullish: 50,
-                bearish: 50
-            };
-        }
+    const rangeStats =
+        analyzeRangePosition(
+            analysisCandle
+        );
 
 
-        const range =
-            candle.high - candle.low;
+    /* =====================================================
+       VWAP POSITION
+       ===================================================== */
 
+    const isAboveVwap =
+        vwapVal !== null &&
+        Number.isFinite(vwapVal) &&
+        currentPrice > vwapVal;
+
+    const isBelowVwap =
+        vwapVal !== null &&
+        Number.isFinite(vwapVal) &&
+        currentPrice < vwapVal;
+
+
+    /* =====================================================
+       MARKET STRENGTH
+       ===================================================== */
+
+    let marketStrength = 0;
+
+    if (currentAdx > 22) {
+        marketStrength += 25;
+    }
+
+    if (rvol >= 1.2) {
+        marketStrength += 25;
+    }
+
+    if (
+        currentRsi >= 52 ||
+        currentRsi <= 48
+    ) {
+        marketStrength += 25;
+    }
+
+    if (
+        (
+            rangeStats.bullish > 65 &&
+            currentRsi > 50
+        ) ||
+        (
+            rangeStats.bearish > 65 &&
+            currentRsi < 50
+        )
+    ) {
+        marketStrength += 25;
+    }
+
+    marketStrength =
+        Math.min(
+            marketStrength,
+            100
+        );
+
+
+    /* =====================================================
+       DIRECTIONAL CONFIDENCE
+       ===================================================== */
+
+    let buyConfidence = 0;
+    let sellConfidence = 0;
+
+
+    /* ---------------- BUY SCORE ---------------- */
+
+    if (fastVal > slowVal) {
+        buyConfidence += 20;
+    }
+
+    if (currentRsi > 50) {
+        buyConfidence += 15;
+    }
+
+    if (currentPlusDI > currentMinusDI) {
+        buyConfidence += 15;
+    }
+
+    if (isAboveVwap) {
+        buyConfidence += 15;
+    }
+
+    if (rvol >= 1.0) {
+        buyConfidence += 10;
+    }
+
+    if (rangeStats.bullish >= 55) {
+        buyConfidence += 10;
+    }
+
+    if (currentAdx > 22) {
+        buyConfidence += 15;
+    }
+
+
+    /* ---------------- SELL SCORE ---------------- */
+
+    if (fastVal < slowVal) {
+        sellConfidence += 20;
+    }
+
+    if (currentRsi < 50) {
+        sellConfidence += 15;
+    }
+
+    if (currentMinusDI > currentPlusDI) {
+        sellConfidence += 15;
+    }
+
+    if (isBelowVwap) {
+        sellConfidence += 15;
+    }
+
+    if (rvol >= 1.0) {
+        sellConfidence += 10;
+    }
+
+    if (rangeStats.bearish >= 55) {
+        sellConfidence += 10;
+    }
+
+    if (currentAdx > 22) {
+        sellConfidence += 15;
+    }
+
+
+    buyConfidence =
+        Math.min(
+            100,
+            buyConfidence
+        );
+
+    sellConfidence =
+        Math.min(
+            100,
+            sellConfidence
+        );
+
+
+    /* =====================================================
+       ENTRY CONDITIONS
+       ===================================================== */
+
+    const buyEntry =
+        fastVal > slowVal &&
+        currentRsi > 50 &&
+        currentPlusDI > currentMinusDI &&
+        isAboveVwap &&
+        rvol >= 1.0 &&
+        rangeStats.bullish >= 55;
+
+    const sellEntry =
+        fastVal < slowVal &&
+        currentRsi < 50 &&
+        currentMinusDI > currentPlusDI &&
+        isBelowVwap &&
+        rvol >= 1.0 &&
+        rangeStats.bearish >= 55;
+
+
+    let direction = 'WAIT';
+
+    let decision =
+        'انتظار توافق مؤشرات الزخم والاتجاه';
+
+
+    /* =====================================================
+       NEW ENTRY
+       ===================================================== */
+
+    if (buyEntry) {
+
+        direction = 'BUY';
+
+        decision =
+            'إشارة شراء مؤكدة — دخول جديد (BUY CONFIRMED)';
+
+    } else if (sellEntry) {
+
+        direction = 'SELL';
+
+        decision =
+            'إشارة بيع مؤكدة — دخول جديد (SELL CONFIRMED)';
+    }
+
+
+    /* =====================================================
+       TREND STATE
+
+       لا نحول الاتجاه المستمر إلى WAIT.
+       ===================================================== */
+
+    if (direction === 'WAIT') {
 
         if (
-            !Number.isFinite(range) ||
-            range <= 0
+            previousSignalDirection === 'BUY' &&
+            fastVal > slowVal &&
+            isAboveVwap &&
+            currentRsi > 50
         ) {
 
-            return {
-                bullish: 50,
-                bearish: 50
-            };
+            direction =
+                'BULLISH_TREND';
+
+            decision =
+                'الاتجاه الصاعد مستمر — لا توجد إشارة دخول جديدة';
+
+        } else if (
+            previousSignalDirection === 'SELL' &&
+            fastVal < slowVal &&
+            isBelowVwap &&
+            currentRsi < 50
+        ) {
+
+            direction =
+                'BEARISH_TREND';
+
+            decision =
+                'الاتجاه الهابط مستمر — لا توجد إشارة دخول جديدة';
         }
+    }
 
 
-        const bodyPosition =
-            (
-                candle.close -
-                candle.low
-            ) / range;
+    /* =====================================================
+       SL / TP
+       ===================================================== */
+
+    const slipBuffer =
+        atr * 0.1;
+
+    let suggestedSL = null;
+    let suggestedTP1 = null;
+    let suggestedTP2 = null;
 
 
-        const bullishPct =
-            Math.round(
-                bodyPosition * 100
-            );
+    if (
+        direction === 'BUY' ||
+        direction === 'BULLISH_TREND'
+    ) {
 
+        suggestedSL =
+            +(
+                analysisCandle.low -
+                (0.8 * atr) -
+                slipBuffer
+            ).toFixed(2);
+
+        suggestedTP1 =
+            +(
+                currentPrice +
+                (1.5 * atr)
+            ).toFixed(2);
+
+        suggestedTP2 =
+            +(
+                currentPrice +
+                (3.0 * atr)
+            ).toFixed(2);
+
+    } else if (
+        direction === 'SELL' ||
+        direction === 'BEARISH_TREND'
+    ) {
+
+        suggestedSL =
+            +(
+                analysisCandle.high +
+                (0.8 * atr) +
+                slipBuffer
+            ).toFixed(2);
+
+        suggestedTP1 =
+            +(
+                currentPrice -
+                (1.5 * atr)
+            ).toFixed(2);
+
+        suggestedTP2 =
+            +(
+                currentPrice -
+                (3.0 * atr)
+            ).toFixed(2);
+    }
+
+
+    /* =====================================================
+       TREND STATE DOES NOT MEAN NEW ENTRY
+       ===================================================== */
+
+    if (
+        direction === 'BULLISH_TREND' ||
+        direction === 'BEARISH_TREND'
+    ) {
+        /*
+         * لا نعرض ثقة الدخول كأنها إشارة جديدة.
+         */
+        buyConfidence =
+            direction === 'BULLISH_TREND'
+                ? buyConfidence
+                : 0;
+
+        sellConfidence =
+            direction === 'BEARISH_TREND'
+                ? sellConfidence
+                : 0;
+    }
+
+
+    /* =====================================================
+       FINAL RESULT
+       ===================================================== */
+
+    return {
+
+        price: currentPrice,
+
+        direction,
+
+        marketStrength,
+
+        buyConfidence,
+
+        sellConfidence,
+
+        decision,
+
+        rsi:
+            currentRsi.toFixed(1),
+
+        adx:
+            currentAdx.toFixed(1),
+
+        rvol:
+            rvol.toFixed(2),
+
+        candleStats:
+            rangeStats,
+
+        ema9:
+            fastVal.toFixed(2),
+
+        ema21:
+            slowVal.toFixed(2),
+
+        vwap:
+            vwapVal !== null &&
+            Number.isFinite(vwapVal)
+                ? vwapVal.toFixed(2)
+                : '--',
+
+        suggestedSL,
+
+        suggestedTP1,
+
+        suggestedTP2
+    };
+}
+
+
+return {
+
+    calculateMovingAverages: function (data) {
+
+        const closes =
+            closesOf(data);
 
         return {
 
-            bullish:
-                Math.max(
-                    5,
-                    Math.min(
-                        95,
-                        bullishPct
-                    )
-                ),
+            emaFast:
+                ema(closes, 9),
 
-            bearish:
-                Math.max(
-                    5,
-                    Math.min(
-                        95,
-                        100 - bullishPct
-                    )
-                )
+            emaSlow:
+                ema(closes, 21)
         };
-    }
+    },
+
+    calculateVWAP,
+
+    generateProSignal
+
+};
+
+})();
     <script>
+function logMessage(msg) {
+    const box = document.getElementById('logBox');
+    if (!box) return;
+
+    const timeStr = new Date().toLocaleTimeString();
+    box.innerHTML += `[${timeStr}] ${msg}<br>`;
+    box.scrollTop = box.scrollHeight;
+}
+
 const TA = (function () {
 
     function closesOf(data) {
-        return data.map(d => d.close);
+        return data.map(d => Number(d.close));
     }
 
     function last(arr) {
         return arr && arr.length ? arr[arr.length - 1] : null;
     }
 
-    // ============================================================
-    // EMA — يحافظ على طول المصفوفة الأصلي ويعالج القيم غير الصالحة
-    // ============================================================
+    /*
+     * ============================================================
+     * EMA — نسخة مستقرة تحافظ على نفس طول المصفوفة
+     * ============================================================
+     */
     function ema(values, period) {
+
         const out = new Array(values.length).fill(null);
 
         if (!Array.isArray(values) || values.length < period) {
             return out;
         }
 
-        const cleanValues = values.map(v =>
-            Number.isFinite(Number(v)) ? Number(v) : null
+        const clean = values.map(v =>
+            v !== null && Number.isFinite(Number(v))
+                ? Number(v)
+                : null
         );
 
-        let validCount = 0;
+        let start = -1;
+
+        for (let i = 0; i < clean.length; i++) {
+            if (clean[i] !== null) {
+                start = i;
+                break;
+            }
+        }
+
+        if (start === -1) return out;
+
+        /*
+         * لا نحسب EMA قبل توفر period قيم حقيقية.
+         * ويتم الحفاظ على الفهارس الأصلية.
+         */
         let sum = 0;
+        let count = 0;
         let seedIndex = -1;
 
-        for (let i = 0; i < cleanValues.length; i++) {
-            const value = cleanValues[i];
+        for (let i = start; i < clean.length; i++) {
 
-            if (value === null) continue;
+            if (clean[i] === null) continue;
 
-            sum += value;
-            validCount++;
+            sum += clean[i];
+            count++;
 
-            if (validCount === period) {
+            if (count === period) {
                 seedIndex = i;
                 break;
             }
         }
 
-        if (seedIndex === -1) {
-            return out;
-        }
+        if (seedIndex === -1) return out;
 
         let previousEMA = sum / period;
         out[seedIndex] = previousEMA;
 
         const k = 2 / (period + 1);
 
-        for (let i = seedIndex + 1; i < cleanValues.length; i++) {
-            const value = cleanValues[i];
+        for (let i = seedIndex + 1; i < clean.length; i++) {
 
+            const value = clean[i];
+
+            /*
+             * إذا ظهرت قيمة غير صالحة في المنتصف،
+             * نحافظ على آخر EMA بدلاً من كسر السلسلة.
+             */
             if (value === null) {
                 out[i] = previousEMA;
                 continue;
             }
 
             previousEMA =
-                ((value - previousEMA) * k) + previousEMA;
+                (value - previousEMA) * k + previousEMA;
 
             out[i] = previousEMA;
         }
@@ -1434,10 +2018,16 @@ const TA = (function () {
         return out;
     }
 
-    // ============================================================
-    // Wilder Smoothing
-    // ============================================================
+    /*
+     * ============================================================
+     * Wilder Smoothing
+     * ============================================================
+     *
+     * ترجع مجموع Wilder وليس المتوسط.
+     * وهذا هو الشكل المطلوب لحساب TR / DM.
+     */
     function wilderSmooth(values, period) {
+
         const out = new Array(values.length).fill(null);
 
         if (!Array.isArray(values) || values.length < period) {
@@ -1449,11 +2039,10 @@ const TA = (function () {
         let seedIndex = -1;
 
         for (let i = 0; i < values.length; i++) {
+
             const value = Number(values[i]);
 
-            if (!Number.isFinite(value)) {
-                continue;
-            }
+            if (!Number.isFinite(value)) continue;
 
             sum += value;
             count++;
@@ -1464,14 +2053,12 @@ const TA = (function () {
             }
         }
 
-        if (seedIndex === -1) {
-            return out;
-        }
+        if (seedIndex === -1) return out;
 
-        // Wilder's initial smoothed value = SUM
         out[seedIndex] = sum;
 
         for (let i = seedIndex + 1; i < values.length; i++) {
+
             const value = Number(values[i]);
 
             if (!Number.isFinite(value)) {
@@ -1480,23 +2067,25 @@ const TA = (function () {
             }
 
             out[i] =
-                out[i - 1] -
-                (out[i - 1] / period) +
-                value;
+                out[i - 1]
+                - (out[i - 1] / period)
+                + value;
         }
 
         return out;
     }
 
-    // ============================================================
-    // RSI — Wilder 14
-    // ============================================================
+    /*
+     * ============================================================
+     * RSI — Wilder
+     * ============================================================
+     */
     function calculateRSI(data, period = 14) {
 
         const closes = closesOf(data);
         const out = new Array(closes.length).fill(null);
 
-        if (closes.length < period + 1) {
+        if (closes.length <= period) {
             return out;
         }
 
@@ -1548,1145 +2137,134 @@ const TA = (function () {
         return out;
     }
 
-    // ============================================================
-    // TR / +DM / -DM
-    // ============================================================
-    function calculateDirectionalMovement(data) {
-
-        const tr = new Array(data.length).fill(null);
-        const plusDM = new Array(data.length).fill(null);
-        const minusDM = new Array(data.length).fill(null);
-
-        if (!data.length) {
-            return { tr, plusDM, minusDM };
-        }
-
-        tr[0] = data[0].high - data[0].low;
-        plusDM[0] = 0;
-        minusDM[0] = 0;
-
-        for (let i = 1; i < data.length; i++) {
-
-            const current = data[i];
-            const previous = data[i - 1];
-
-            const highDiff =
-                current.high - previous.high;
-
-            const lowDiff =
-                previous.low - current.low;
-
-            tr[i] = Math.max(
-                current.high - current.low,
-                Math.abs(current.high - previous.close),
-                Math.abs(current.low - previous.close)
-            );
-
-            plusDM[i] =
-                highDiff > lowDiff && highDiff > 0
-                    ? highDiff
-                    : 0;
-
-            minusDM[i] =
-                lowDiff > highDiff && lowDiff > 0
-                    ? lowDiff
-                    : 0;
-        }
-
-        return {
-            tr,
-            plusDM,
-            minusDM
-        };
-    }
-
-    // ============================================================
-    // ADX + DI — Wilder Corrected
-    // ============================================================
+    /*
+     * ============================================================
+     * ADX + DI — Wilder
+     * ============================================================
+     *
+     * الإصلاح المهم:
+     *
+     * لا يتم تحويل null إلى 0.
+     *
+     * ADX يبدأ بعد توفر:
+     * 1) Wilder TR/DM
+     * 2) DI
+     * 3) DX
+     * 4) أول متوسط Wilder للـ DX
+     *
+     * وبالتالي لا توجد أصفار مصطنعة في بداية ADX.
+     */
     function calculateADXAndDI(data, period = 14) {
 
         const len = data.length;
 
         const adxOut = new Array(len).fill(null);
         const plusDIOut = new Array(len).fill(null);
-        const minusDIOut = new Array(len).fill(null);
-
-        if (len < (period * 2) + 1) {
-            return {
-                adx: adxOut,
-                plusDI: plusDIOut,
-                minusDI: minusDIOut
-            };
-        }
-
-        const movement =
-            calculateDirectionalMovement(data);
-
-        const smoothTR =
-            wilderSmooth(movement.tr, period);
-
-        const smoothPlusDM =
-            wilderSmooth(movement.plusDM, period);
-
-        const smoothMinusDM =
-            wilderSmooth(movement.minusDM, period);
-
-        const dx = new Array(len).fill(null);
-
-        // --------------------------------------------------------
-        // حساب DI و DX
-        // --------------------------------------------------------
-        for (let i = 0; i < len; i++) {
-
-            if (
-                smoothTR[i] === null ||
-                smoothPlusDM[i] === null ||
-                smoothMinusDM[i] === null ||
-                smoothTR[i] <= 0
-            ) {
-                continue;
-            }
-
-            const plusDI =
-                (smoothPlusDM[i] / smoothTR[i]) * 100;
-
-            const minusDI =
-                (smoothMinusDM[i] / smoothTR[i]) * 100;
-
-            plusDIOut[i] = plusDI;
-            minusDIOut[i] = minusDI;
-
-            const denominator =
-                plusDI + minusDI;
-
-            if (denominator > 0) {
-                dx[i] =
-                    (Math.abs(plusDI - minusDI) /
-                        denominator) * 100;
-            }
-        }
-
-        // --------------------------------------------------------
-        // مهم:
-        // لا نحول null إلى 0.
-        // نأخذ أول period قيم DX صحيحة فقط
-        // لتكوين ADX الأولي بطريقة Wilder.
-        // --------------------------------------------------------
-        let validDXCount = 0;
-        let dxSum = 0;
-        let firstADXIndex = -1;
-
-        for (let i = 0; i < len; i++) {
-
-            if (
-                dx[i] !== null &&
-                Number.isFinite(dx[i])
-            ) {
-
-                dxSum += dx[i];
-                validDXCount++;
-
-                if (validDXCount === period) {
-                    firstADXIndex = i;
-                    break;
-                }
-            }
-        }
-
-        if (firstADXIndex === -1) {
-            return {
-                adx: adxOut,
-                plusDI: plusDIOut,
-                minusDI: minusDIOut
-            };
-        }
-
-        // أول ADX = متوسط أول 14 DX
-        adxOut[firstADXIndex] =
-            dxSum / period;
-
-        // --------------------------------------------------------
-        // Wilder recursive smoothing للـ ADX
-        // --------------------------------------------------------
-        for (
-            let i = firstADXIndex + 1;
-            i < len;
-            i++
-        ) {
-
-            if (
-                dx[i] === null ||
-                !Number.isFinite(dx[i])
-            ) {
-                adxOut[i] = adxOut[i - 1];
-                continue;
-            }
-
-            adxOut[i] =
-                (
-                    (adxOut[i - 1] * (period - 1))
-                    + dx[i]
-                ) / period;
-        }
-
-        return {
-            adx: adxOut,
-            plusDI: plusDIOut,
-            minusDI: minusDIOut
-        };
-    }
-
-    // ============================================================
-    // ATR — Wilder
-    // ============================================================
-    function calculateATR(data, period = 14) {
-
-        const tr = new Array(data.length).fill(null);
-
-        if (!data.length) {
-            return tr;
-        }
-
-        tr[0] =
-            data[0].high -
-            data[0].low;
-
-        for (let i = 1; i < data.length; i++) {
-
-            const current = data[i];
-            const previousClose =
-                data[i - 1].close;
-
-            tr[i] = Math.max(
-                current.high - current.low,
-                Math.abs(
-                    current.high - previousClose
-                ),
-                Math.abs(
-                    current.low - previousClose
-                )
-            );
-        }
-
-        return wilderSmooth(tr, period);
-    }
-
-    // ============================================================
-    // VWAP — Daily UTC Reset
-    // ============================================================
-    function calculateVWAP(data) {
-
-        const out =
-            new Array(data.length).fill(null);
-
-        let cumulativeTPV = 0;
-        let cumulativeVolume = 0;
-        let lastDateKey = null;
-
-        for (let i = 0; i < data.length; i++) {
-
-            const candle = data[i];
-
-            const dateKey =
-                new Date(candle.time * 1000)
-                    .toISOString()
-                    .split('T')[0];
-
-            if (dateKey !== lastDateKey) {
-
-                cumulativeTPV = 0;
-                cumulativeVolume = 0;
-
-                lastDateKey = dateKey;
-            }
-
-            const typicalPrice =
-                (
-                    candle.high +
-                    candle.low +
-                    candle.close
-                ) / 3;
-
-            const volume =
-                Number.isFinite(Number(candle.volume))
-                    ? Number(candle.volume)
-                    : 0;
-
-            cumulativeTPV +=
-                typicalPrice * volume;
-
-            cumulativeVolume += volume;
-
-            out[i] =
-                cumulativeVolume > 0
-                    ? cumulativeTPV / cumulativeVolume
-                    : null;
-        }
-
-        return out;
-    }
-    // ============================================================
-    // Data Continuity Validation
-    // ============================================================
-    function validateDataContinuity(data, tfMinutes = '1') {
-
-        if (!Array.isArray(data) || data.length < 35) {
-            return false;
-        }
-
-        const intervalSec =
-            parseInt(tfMinutes, 10) * 60;
-
-        if (!Number.isFinite(intervalSec) || intervalSec <= 0) {
-            return false;
-        }
-
-        for (let i = 1; i < data.length; i++) {
-
-            const diff =
-                Number(data[i].time) -
-                Number(data[i - 1].time);
-
-            if (!Number.isFinite(diff) || diff <= 0) {
-                return false;
-            }
-
-            // ----------------------------------------------------
-            // الفريمات القصيرة:
-            // نسمح بفارق بسيط بسبب اختلافات المصدر،
-            // لكن لا نسمح بفجوة كبيرة.
-            // ----------------------------------------------------
-            if (tfMinutes !== '240') {
-
-                if (diff > intervalSec * 1.5) {
-                    return false;
-                }
-
-                continue;
-            }
-
-            // ----------------------------------------------------
-            // فريم 4 ساعات:
-            // لا نتجاهل الفجوات بالكامل.
-            //
-            // السماح:
-            // 4 ساعات تقريباً = 14400 ثانية
-            //
-            // الفجوة الأسبوعية يمكن أن تكون أكبر،
-            // لذلك نسمح بحد أقصى 3.5 × الفاصل.
-            // ----------------------------------------------------
-            if (diff > intervalSec * 3.5) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    // ============================================================
-    // Candle Range Position
-    // ============================================================
-    function analyzeRangePosition(candle) {
-
-        if (!candle) {
-            return {
-                bullish: 50,
-                bearish: 50
-            };
-        }
-
-        const range =
-            candle.high - candle.low;
-
-        if (!Number.isFinite(range) || range <= 0) {
-            return {
-                bullish: 50,
-                bearish: 50
-            };
-        }
-
-        const bodyPosition =
-            (candle.close - candle.low) / range;
-
-        const bullish =
-            Math.round(bodyPosition * 100);
-
-        return {
-            bullish: Math.max(
-                5,
-                Math.min(95, bullish)
-            ),
-
-            bearish: Math.max(
-                5,
-                Math.min(95, 100 - bullish)
-            )
-        };
-    }
-
-    // ============================================================
-    // Generate Professional Signal
-    // ============================================================
-    function generateProSignal(
-        fullData,
-        currentTF,
-        currentSpreadPct,
-        previousSignalDirection
-    ) {
-
-        if (
-            !Array.isArray(fullData) ||
-            fullData.length < 35
-        ) {
-            return null;
-        }
-
-        if (
-            !validateDataContinuity(
-                fullData,
-                currentTF
-            )
-        ) {
-            return null;
-        }
-
-        // --------------------------------------------------------
-        // Spread Filter
-        // --------------------------------------------------------
-        if (
-            Number.isFinite(currentSpreadPct) &&
-            currentSpreadPct > 0.04
-        ) {
-
-            const analysisCandle =
-                fullData[fullData.length - 2];
-
-            return {
-                price: analysisCandle.close,
-
-                direction: 'WAIT',
-
-                marketStrength: 0,
-
-                buyConfidence: 0,
-                sellConfidence: 0,
-
-                // للتوافق مع أي واجهة قديمة
-                entryConfidence: 0,
-
-                decision:
-                    `تم حظر الإشارة بسبب ارتفاع السبريد (${currentSpreadPct.toFixed(3)}%)`,
-
-                rsi: '0',
-                adx: '0',
-                rvol: '0',
-
-                candleStats: {
-                    bullish: 50,
-                    bearish: 50
-                },
-
-                suggestedSL: null,
-                suggestedTP1: null,
-                suggestedTP2: null
-            };
-        }
-
-        // --------------------------------------------------------
-        // آخر شمعة مكتملة
-        // --------------------------------------------------------
-        const analysisCandle =
-            fullData[fullData.length - 2];
-
-        const currentPrice =
-            analysisCandle.close;
-
-        // نستبعد الشمعة الحالية غير المكتملة
-        const closedData =
-            fullData.slice(0, -1);
-
-        if (closedData.length < 35) {
-            return null;
-        }
-
-        // --------------------------------------------------------
-        // Indicators
-        // --------------------------------------------------------
-        const rsiArr =
-            calculateRSI(
-                closedData,
-                14
-            );
-
-        const adxData =
-            calculateADXAndDI(
-                closedData,
-                14
-            );
-
-        const atrArr =
-            calculateATR(
-                closedData,
-                14
-            );
-
-        const vwapArr =
-            calculateVWAP(
-                closedData
-            );
-
-        const closes =
-            closesOf(closedData);
-
-        const emaFastArr =
-            ema(closes, 9);
-
-        const emaSlowArr =
-            ema(closes, 21);
-
-        const currentRsi =
-            last(rsiArr);
-
-        const currentAdx =
-            last(adxData.adx);
-
-        const currentPlusDI =
-            last(adxData.plusDI);
-
-        const currentMinusDI =
-            last(adxData.minusDI);
-
-        let atr =
-            last(atrArr);
-
-        const vwapVal =
-            last(vwapArr);
-
-        const fastVal =
-            last(emaFastArr);
-
-        const slowVal =
-            last(emaSlowArr);
-
-        // --------------------------------------------------------
-        // حماية من قيم غير صالحة
-        // --------------------------------------------------------
-        if (
-            currentRsi === null ||
-            currentAdx === null ||
-            !Number.isFinite(currentRsi) ||
-            !Number.isFinite(currentAdx)
-        ) {
-            return null;
-        }
-
-        if (
-            !Number.isFinite(atr) ||
-            atr <= 0
-        ) {
-            atr =
-                currentPrice * 0.002;
-        }
-
-        // --------------------------------------------------------
-        // RVOL
-        // استبعاد الشمعة الحالية من المتوسط
-        // --------------------------------------------------------
-        const volumeWindow =
-            closedData.slice(-21, -1);
-
-        const validVolumes =
-            volumeWindow
-                .map(d => Number(d.volume))
-                .filter(v =>
-                    Number.isFinite(v) &&
-                    v >= 0
-                );
-
-        const avgVol =
-            validVolumes.length
-                ? validVolumes.reduce(
-                    (a, b) => a + b,
-                    0
-                ) / validVolumes.length
-                : 0;
-
-        const candleVolume =
-            Number(analysisCandle.volume);
-
-        const rvol =
-            avgVol > 0 &&
-            Number.isFinite(candleVolume)
-                ? candleVolume / avgVol
-                : 1;
-
-        // --------------------------------------------------------
-        // Range Position
-        // --------------------------------------------------------
-        const rangeStats =
-            analyzeRangePosition(
-                analysisCandle
-            );
-
-        // --------------------------------------------------------
-        // VWAP Position
-        // --------------------------------------------------------
-        const isAboveVwap =
-            Number.isFinite(vwapVal) &&
-            currentPrice > vwapVal;
-
-        const isBelowVwap =
-            Number.isFinite(vwapVal) &&
-            currentPrice < vwapVal;
-
-        // ========================================================
-        // MARKET STRENGTH
-        // ========================================================
-        let marketStrength = 0;
-
-        if (currentAdx > 22) {
-            marketStrength += 25;
-        }
-
-        if (rvol >= 1.2) {
-            marketStrength += 25;
-        }
-
-        if (
-            currentRsi >= 52 ||
-            currentRsi <= 48
-        ) {
-            marketStrength += 25;
-        }
-
-        if (
-            (
-                rangeStats.bullish > 65 &&
-                currentRsi > 50
-            ) ||
-            (
-                rangeStats.bearish > 65 &&
-                currentRsi < 50
-            )
-        ) {
-            marketStrength += 25;
-        }
-
-        marketStrength =
-            Math.min(
-                100,
-                marketStrength
-            );
-
-        // ========================================================
-        // DIRECTIONAL CONDITIONS
-        // ========================================================
-        const bullishTrend =
-            fastVal !== null &&
-            slowVal !== null &&
-            currentRsi > 50 &&
-            currentPlusDI !== null &&
-            currentMinusDI !== null &&
-            currentPlusDI > currentMinusDI &&
-            isAboveVwap;
-
-        const bearishTrend =
-            fastVal !== null &&
-            slowVal !== null &&
-            currentRsi < 50 &&
-            currentPlusDI !== null &&
-            currentMinusDI !== null &&
-            currentMinusDI > currentPlusDI &&
-            isBelowVwap;
-
-        // ========================================================
-        // ENTRY CONFIDENCE — منفصل BUY / SELL
-        // ========================================================
-        let buyConfidence = 0;
-        let sellConfidence = 0;
-
-        // ---------------- BUY ----------------
-        if (
-            fastVal !== null &&
-            slowVal !== null &&
-            fastVal > slowVal
-        ) {
-            buyConfidence += 20;
-        }
-
-        if (currentRsi > 50) {
-            buyConfidence += 15;
-        }
-
-        if (
-            currentPlusDI !== null &&
-            currentMinusDI !== null &&
-            currentPlusDI > currentMinusDI
-        ) {
-            buyConfidence += 20;
-        }
-
-        if (isAboveVwap) {
-            buyConfidence += 15;
-        }
-
-        if (rvol >= 1.0) {
-            buyConfidence += 10;
-        }
-
-        if (rangeStats.bullish >= 55) {
-            buyConfidence += 10;
-        }
-
-        if (currentAdx > 22) {
-            buyConfidence += 10;
-        }
-
-        // ---------------- SELL ----------------
-        if (
-            fastVal !== null &&
-            slowVal !== null &&
-            fastVal < slowVal
-        ) {
-            sellConfidence += 20;
-        }
-
-        if (currentRsi < 50) {
-            sellConfidence += 15;
-        }
-
-        if (
-            currentPlusDI !== null &&
-            currentMinusDI !== null &&
-            currentMinusDI > currentPlusDI
-        ) {
-            sellConfidence += 20;
-        }
-
-        if (isBelowVwap) {
-            sellConfidence += 15;
-        }
-
-        if (rvol >= 1.0) {
-            sellConfidence += 10;
-        }
-
-        if (rangeStats.bearish >= 55) {
-            sellConfidence += 10;
-        }
-
-        if (currentAdx > 22) {
-            sellConfidence += 10;
-        }
-
-        buyConfidence =
-            Math.min(
-                100,
-                buyConfidence
-            );
-
-        sellConfidence =
-            Math.min(
-                100,
-                sellConfidence
-            );
-
-        // ========================================================
-        // FINAL SIGNAL
-        // ========================================================
-        let direction = 'WAIT';
-
-        let decision =
-            'انتظار توافق مؤشرات الزخم والاتجاه';
-
-        // ========================================================
-        // BUY ENTRY
-        // ========================================================
-        const buyEntry =
-            fastVal !== null &&
-            slowVal !== null &&
-            fastVal > slowVal &&
-            currentRsi > 50 &&
-            currentPlusDI !== null &&
-            currentMinusDI !== null &&
-            currentPlusDI > currentMinusDI &&
-            isAboveVwap &&
-            rvol >= 1.0 &&
-            rangeStats.bullish >= 55 &&
-            buyConfidence >= 75;
-
-        // ========================================================
-        // SELL ENTRY
-        // ========================================================
-        const sellEntry =
-            fastVal !== null &&
-            slowVal !== null &&
-            fastVal < slowVal &&
-            currentRsi < 50 &&
-            currentPlusDI !== null &&
-            currentMinusDI !== null &&
-            currentMinusDI > currentPlusDI &&
-            isBelowVwap &&
-            rvol >= 1.0 &&
-            rangeStats.bearish >= 55 &&
-            sellConfidence >= 75;
-
-        if (buyEntry) {
-
-            direction = 'BUY';
-
-            decision =
-                'إشارة شراء مؤكدة — دخول جديد';
-
-        } else if (sellEntry) {
-
-            direction = 'SELL';
-
-            decision =
-                'إشارة بيع مؤكدة — دخول جديد';
-
-        } else {
-
-            // ----------------------------------------------------
-            // لا نحول استمرار الاتجاه إلى WAIT
-            // ----------------------------------------------------
-            if (
-                previousSignalDirection === 'BUY' &&
-                bullishTrend
-            ) {
-
-                direction =
-                    'BULLISH_TREND';
-
-                decision =
-                    'الاتجاه الصاعد مستمر — لا توجد إشارة دخول جديدة';
-
-            } else if (
-                previousSignalDirection === 'SELL' &&
-                bearishTrend
-            ) {
-
-                direction =
-                    'BEARISH_TREND';
-
-                decision =
-                    'الاتجاه الهابط مستمر — لا توجد إشارة دخول جديدة';
-            }
-        }
-
-        // ========================================================
-        // SL / TP
-        // ========================================================
-        const slipBuffer =
-            atr * 0.1;
-
-        let suggestedSL = null;
-        let suggestedTP1 = null;
-        let suggestedTP2 = null;
-
-        if (
-            direction === 'BUY' ||
-            direction === 'BULLISH_TREND'
-        ) {
-
-            suggestedSL =
-                +(
-                    analysisCandle.low -
-                    (0.8 * atr) -
-                    slipBuffer
-                ).toFixed(2);
-
-            suggestedTP1 =
-                +(
-                    currentPrice +
-                    (1.5 * atr)
-                ).toFixed(2);
-
-            suggestedTP2 =
-                +(
-                    currentPrice +
-                    (3.0 * atr)
-                ).toFixed(2);
-
-        } else if (
-            direction === 'SELL' ||
-            direction === 'BEARISH_TREND'
-        ) {
-
-            suggestedSL =
-                +(
-                    analysisCandle.high +
-                    (0.8 * atr) +
-                    slipBuffer
-                ).toFixed(2);
-
-            suggestedTP1 =
-                +(
-                    currentPrice -
-                    (1.5 * atr)
-                ).toFixed(2);
-
-            suggestedTP2 =
-                +(
-                    currentPrice -
-                    (3.0 * atr)
-                ).toFixed(2);
-        }
-
-        // ========================================================
-        // Entry Confidence الموحد للتوافق مع الواجهة القديمة
-        // ========================================================
-        let entryConfidence = 0;
-
-        if (direction === 'BUY') {
-            entryConfidence =
-                buyConfidence;
-        } else if (direction === 'SELL') {
-            entryConfidence =
-                sellConfidence;
-        }
-
-        // ========================================================
-        // Final Object
-        // ========================================================
-        return {
-            price: currentPrice,
-
-            direction,
-
-            marketStrength,
-
-            buyConfidence,
-            sellConfidence,
-
-            entryConfidence,
-
-            decision,
-
-            rsi:
-                currentRsi.toFixed(1),
-
-            adx:
-                currentAdx.toFixed(1),
-
-            rvol:
-                rvol.toFixed(2),
-
-            candleStats:
-                rangeStats,
-
-            suggestedSL,
-
-            suggestedTP1,
-
-            suggestedTP2
-        };
-    }
-
-    // ============================================================
-    // Public API
-    // ============================================================
-    return {
-
-        calculateMovingAverages: function (data) {
-
-            const closes =
-                closesOf(data);
-
-            return {
-                emaFast:
-                    ema(closes, 9),
-
-                emaSlow:
-                    ema(closes, 21)
-            };
-        },
-
-        calculateVWAP,
-
-        generateProSignal
-    };
-
-})();
-    <script>
-let chart;
-let candleSeries;
-let emaSeries;
-let emaSlowSeries;
-let vwapSeries;
+       <script>
+let chart, candleSeries, emaSeries, emaSlowSeries, vwapSeries;
 
 let currentTF = '1';
-
 let showEMA = true;
 let showVWAP = true;
 
 let historicalData = [];
-
 let ws = null;
 
 let lastProcessedCandleTime = 0;
-
 let wsConnectionId = 0;
 let fetchRequestId = 0;
 
 let reconnectTimeout = null;
-
 let lastSignalDirection = 'WAIT';
 
 let currentSpreadPct = 0.01;
 
-
-// ============================================================
-// تنظيف مؤقت إعادة الاتصال
-// ============================================================
-function clearReconnectTimeout() {
-
+/* =========================================================
+   تنظيف مؤقت إعادة الاتصال
+   ========================================================= */
+function clearReconnectTimer() {
     if (reconnectTimeout !== null) {
-
         clearTimeout(reconnectTimeout);
-
         reconnectTimeout = null;
     }
 }
 
-
-// ============================================================
-// تنظيف WebSocket الحالي
-// ============================================================
-function closeCurrentWebSocket() {
-
-    clearReconnectTimeout();
-
-    wsConnectionId++;
-
-    if (ws) {
-
-        try {
-            ws.onopen = null;
-            ws.onmessage = null;
-            ws.onerror = null;
-            ws.onclose = null;
-
-            if (
-                ws.readyState === WebSocket.OPEN ||
-                ws.readyState === WebSocket.CONNECTING
-            ) {
-                ws.close();
-            }
-
-        } catch (error) {
-            console.warn(
-                'WebSocket cleanup error:',
-                error
-            );
-        }
-
-        ws = null;
-    }
-}
-
-
-// ============================================================
-// إنشاء الرسم البياني
-// ============================================================
+/* =========================================================
+   إنشاء الرسم البياني
+   ========================================================= */
 function initChart() {
 
-    const chartElement =
-        document.getElementById('chart');
+    const chartElement = document.getElementById('chart');
 
     if (!chartElement) {
+        console.error('Chart element not found');
         return;
     }
 
     chartElement.innerHTML = '';
 
-    chart =
-        LightweightCharts.createChart(
-            chartElement,
-            {
-                layout: {
-                    background: {
-                        type: 'solid',
-                        color: '#0f172a'
-                    },
+    chart = LightweightCharts.createChart(chartElement, {
+        width: chartElement.clientWidth,
+        height: chartElement.clientHeight,
 
-                    textColor: '#94a3b8'
-                },
+        layout: {
+            background: {
+                type: 'solid',
+                color: '#0f172a'
+            },
+            textColor: '#94a3b8'
+        },
 
-                grid: {
-                    vertLines: {
-                        color: '#1e293b'
-                    },
-
-                    horzLines: {
-                        color: '#1e293b'
-                    }
-                },
-
-                crosshair: {
-                    mode:
-                        LightweightCharts
-                            .CrosshairMode
-                            .Normal
-                },
-
-                rightPriceScale: {
-                    borderColor:
-                        '#1e293b'
-                },
-
-                timeScale: {
-                    borderColor:
-                        '#1e293b',
-
-                    timeVisible: true,
-
-                    secondsVisible: false
-                }
+        grid: {
+            vertLines: {
+                color: '#1e293b'
+            },
+            horzLines: {
+                color: '#1e293b'
             }
-        );
+        },
 
-    candleSeries =
-        chart.addCandlestickSeries({
-            upColor: '#22c55e',
+        crosshair: {
+            mode: LightweightCharts.CrosshairMode.Normal
+        },
 
-            downColor: '#ef4444',
+        rightPriceScale: {
+            borderColor: '#1e293b'
+        },
 
-            borderVisible: false,
+        timeScale: {
+            borderColor: '#1e293b',
+            timeVisible: true,
+            secondsVisible: false
+        }
+    });
 
-            wickUpColor: '#22c55e',
+    candleSeries = chart.addCandlestickSeries({
+        upColor: '#22c55e',
+        downColor: '#ef4444',
+        borderVisible: false,
+        wickUpColor: '#22c55e',
+        wickDownColor: '#ef4444'
+    });
 
-            wickDownColor: '#ef4444'
-        });
+    emaSeries = chart.addLineSeries({
+        color: '#3b82f6',
+        lineWidth: 2,
+        title: 'EMA 9'
+    });
 
-    emaSeries =
-        chart.addLineSeries({
-            color: '#3b82f6',
+    emaSlowSeries = chart.addLineSeries({
+        color: '#a855f7',
+        lineWidth: 2,
+        title: 'EMA 21'
+    });
 
-            lineWidth: 2,
+    vwapSeries = chart.addLineSeries({
+        color: '#eab308',
+        lineWidth: 2,
+        title: 'VWAP'
+    });
 
-            title: 'EMA 9'
-        });
-
-    emaSlowSeries =
-        chart.addLineSeries({
-            color: '#a855f7',
-
-            lineWidth: 2,
-
-            title: 'EMA 21'
-        });
-
-    vwapSeries =
-        chart.addLineSeries({
-            color: '#eab308',
-
-            lineWidth: 2,
-
-            title: 'VWAP'
-        });
-
-    // تطبيق حالة الإظهار الحالية
     emaSeries.applyOptions({
         visible: showEMA
     });
@@ -2699,166 +2277,166 @@ function initChart() {
         visible: showVWAP
     });
 
-    chart.resize(
-        chartElement.clientWidth,
-        chartElement.clientHeight
-    );
+    window.addEventListener('resize', () => {
+
+        if (!chart || !chartElement) return;
+
+        const width = chartElement.clientWidth;
+        const height = chartElement.clientHeight;
+
+        if (width > 0 && height > 0) {
+            chart.resize(width, height);
+        }
+    });
 }
 
+/* =========================================================
+   تغيير الفريم
+   ========================================================= */
+function changeTimeframe(tf, event) {
 
-// ============================================================
-// تغيير الفريم
-// ============================================================
-function changeTimeframe(
-    tf,
-    event
-) {
+    document.querySelectorAll('.tf-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
 
-    if (!tf) {
-        return;
+    if (event && event.target) {
+        event.target.classList.add('active');
     }
-
-    document
-        .querySelectorAll('.tf-btn')
-        .forEach(btn => {
-            btn.classList.remove('active');
-        });
-
-    if (
-        event &&
-        event.target
-    ) {
-
-        event.target.classList.add(
-            'active'
-        );
-    }
-
-    // --------------------------------------------------------
-    // تغيير معرف طلب الـAPI قبل أي شيء
-    // حتى لا يستطيع الرد القديم الكتابة فوق البيانات الجديدة
-    // --------------------------------------------------------
-    fetchRequestId++;
 
     currentTF = String(tf);
 
     lastProcessedCandleTime = 0;
-
     historicalData = [];
-
     lastSignalDirection = 'WAIT';
 
-    closeCurrentWebSocket();
+    /* إلغاء أي طلب API قديم */
+    fetchRequestId++;
+
+    /* إلغاء مؤقت إعادة الاتصال القديم */
+    clearReconnectTimer();
+
+    /* إغلاق WebSocket القديم */
+    if (ws) {
+
+        try {
+            ws.onopen = null;
+            ws.onmessage = null;
+            ws.onerror = null;
+            ws.onclose = null;
+            ws.close();
+        } catch (e) {
+            console.warn('WebSocket close error:', e);
+        }
+
+        ws = null;
+    }
+
+    /* تنظيف بيانات الرسم */
+    if (candleSeries) candleSeries.setData([]);
+    if (emaSeries) emaSeries.setData([]);
+    if (emaSlowSeries) emaSlowSeries.setData([]);
+    if (vwapSeries) vwapSeries.setData([]);
+
+    document.getElementById('price').innerText = 'جاري تحميل البيانات...';
 
     fetchInitialHistoryAndConnectWS();
 }
 
-
-// ============================================================
-// تشغيل / إخفاء EMA
-// ============================================================
+/* =========================================================
+   تشغيل / إيقاف EMA
+   ========================================================= */
 function toggleEMA() {
 
     showEMA = !showEMA;
 
-    const button =
-        document.getElementById(
-            'emaToggle'
-        );
+    const btn = document.getElementById('emaToggle');
 
-    if (button) {
-
-        button.classList.toggle(
-            'active',
-            showEMA
-        );
+    if (btn) {
+        btn.classList.toggle('active', showEMA);
     }
 
     if (emaSeries) {
-
         emaSeries.applyOptions({
             visible: showEMA
         });
     }
 
     if (emaSlowSeries) {
-
         emaSlowSeries.applyOptions({
             visible: showEMA
         });
     }
 }
 
-
-// ============================================================
-// تشغيل / إخفاء VWAP
-// ============================================================
+/* =========================================================
+   تشغيل / إيقاف VWAP
+   ========================================================= */
 function toggleVWAP() {
 
     showVWAP = !showVWAP;
 
-    const button =
-        document.getElementById(
-            'vwapToggle'
-        );
+    const btn = document.getElementById('vwapToggle');
 
-    if (button) {
-
-        button.classList.toggle(
-            'active',
-            showVWAP
-        );
+    if (btn) {
+        btn.classList.toggle('active', showVWAP);
     }
 
     if (vwapSeries) {
-
         vwapSeries.applyOptions({
             visible: showVWAP
         });
     }
 }
 
-
-// ============================================================
-// جلب التاريخ ثم تشغيل WebSocket
-// ============================================================
+/* =========================================================
+   جلب البيانات التاريخية من نفس Bybit API
+   ========================================================= */
 async function fetchInitialHistoryAndConnectWS() {
 
-    const requestId =
-        ++fetchRequestId;
+    const currentReqId = ++fetchRequestId;
+    const requestedTF = currentTF;
 
-    const requestedTF =
-        currentTF;
+    clearReconnectTimer();
 
     try {
 
-        const response =
-            await fetch(
-                `https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${requestedTF}&limit=200`
-            );
+        /*
+         * نفس API الأصلي:
+         * Bybit V5 Linear
+         * XAUUSDT
+         */
+        const url =
+            `https://api.bybit.com/v5/market/kline` +
+            `?category=linear` +
+            `&symbol=XAUUSDT` +
+            `&interval=${requestedTF}` +
+            `&limit=200`;
 
-        // ----------------------------------------------------
-        // حماية Race Condition
-        // ----------------------------------------------------
+        const response = await fetch(url);
+
+        /*
+         * حماية من Race Condition
+         */
         if (
-            requestId !== fetchRequestId ||
+            currentReqId !== fetchRequestId ||
             requestedTF !== currentTF
         ) {
             return;
         }
 
         if (!response.ok) {
-
             throw new Error(
                 `HTTP error! status: ${response.status}`
             );
         }
 
-        const resJson =
-            await response.json();
+        const resJson = await response.json();
 
+        /*
+         * التأكد مرة أخرى أن الطلب ما زال هو الطلب الحالي
+         */
         if (
-            requestId !== fetchRequestId ||
+            currentReqId !== fetchRequestId ||
             requestedTF !== currentTF
         ) {
             return;
@@ -2867,566 +2445,297 @@ async function fetchInitialHistoryAndConnectWS() {
         if (
             !resJson ||
             !resJson.result ||
-            !Array.isArray(
-                resJson.result.list
-            )
+            !Array.isArray(resJson.result.list)
         ) {
+            throw new Error('بيانات Bybit غير صالحة');
+        }
 
-            throw new Error(
-                'بيانات Kline غير صالحة من Bybit'
+        const rawList = resJson.result.list.reverse();
+
+        historicalData = rawList
+            .map(item => ({
+                time: parseInt(item[0], 10) / 1000,
+                open: parseFloat(item[1]),
+                high: parseFloat(item[2]),
+                low: parseFloat(item[3]),
+                close: parseFloat(item[4]),
+                volume: parseFloat(item[5])
+            }))
+            .filter(c =>
+                Number.isFinite(c.time) &&
+                Number.isFinite(c.open) &&
+                Number.isFinite(c.high) &&
+                Number.isFinite(c.low) &&
+                Number.isFinite(c.close) &&
+                Number.isFinite(c.volume)
             );
-        }
 
-        const rawList =
-            [...resJson.result.list]
-                .reverse();
-
-        const parsedData =
-            rawList
-                .map(item => {
-
-                    const time =
-                        parseInt(
-                            item[0],
-                            10
-                        ) / 1000;
-
-                    const open =
-                        parseFloat(item[1]);
-
-                    const high =
-                        parseFloat(item[2]);
-
-                    const low =
-                        parseFloat(item[3]);
-
-                    const close =
-                        parseFloat(item[4]);
-
-                    const volume =
-                        parseFloat(item[5]);
-
-                    return {
-                        time,
-                        open,
-                        high,
-                        low,
-                        close,
-                        volume
-                    };
-                })
-                .filter(candle =>
-                    Number.isFinite(
-                        candle.time
-                    ) &&
-                    Number.isFinite(
-                        candle.open
-                    ) &&
-                    Number.isFinite(
-                        candle.high
-                    ) &&
-                    Number.isFinite(
-                        candle.low
-                    ) &&
-                    Number.isFinite(
-                        candle.close
-                    ) &&
-                    Number.isFinite(
-                        candle.volume
-                    )
-                );
-
-        // ----------------------------------------------------
-        // تحقق أخير قبل الكتابة إلى الحالة العامة
-        // ----------------------------------------------------
-        if (
-            requestId !== fetchRequestId ||
-            requestedTF !== currentTF
-        ) {
-            return;
-        }
-
-        historicalData =
-            parsedData;
-
-        if (
-            historicalData.length < 35
-        ) {
-
+        if (historicalData.length < 35) {
             throw new Error(
-                'عدد الشموع التاريخية غير كافٍ للتحليل'
+                `عدد الشموع غير كافٍ للتحليل: ${historicalData.length}`
             );
         }
 
         updateChartAndEngine();
 
-        // لا نشغل WS إذا كان المستخدم غيّر الفريم
-        // أثناء جلب البيانات
+        /*
+         * لا نفتح WebSocket إلا إذا كان هذا
+         * ما زال الفريم المطلوب حالياً.
+         */
         if (
-            requestId === fetchRequestId &&
+            currentReqId === fetchRequestId &&
             requestedTF === currentTF
         ) {
-
             connectBybitWebSocket();
         }
 
-    } catch (error) {
+    } catch (e) {
 
         if (
-            requestId !== fetchRequestId ||
+            currentReqId !== fetchRequestId ||
             requestedTF !== currentTF
         ) {
             return;
         }
 
         logMessage(
-            `خطأ في جلب بيانات API: ${error.message}`
+            `خطأ في جلب بيانات API: ${e.message}`
         );
 
-        clearReconnectTimeout();
+        clearReconnectTimer();
 
-        reconnectTimeout =
-            setTimeout(
-                () => {
+        reconnectTimeout = setTimeout(() => {
 
-                    reconnectTimeout = null;
+            reconnectTimeout = null;
 
-                    if (
-                        requestedTF === currentTF
-                    ) {
+            if (
+                currentReqId === fetchRequestId &&
+                requestedTF === currentTF
+            ) {
+                fetchInitialHistoryAndConnectWS();
+            }
 
-                        fetchInitialHistoryAndConnectWS();
-                    }
-
-                },
-                5000
-            );
+        }, 5000);
     }
 }
 
-
-// ============================================================
-// تحديث الرسم + المحرك
-// ============================================================
+/* =========================================================
+   تحديث الرسم + محرك التحليل
+   ========================================================= */
 function updateChartAndEngine() {
 
     if (
-        !Array.isArray(historicalData) ||
-        historicalData.length < 2
+        !historicalData ||
+        historicalData.length < 35
     ) {
         return;
     }
 
-    if (!candleSeries) {
+    /*
+     * تحديث الشموع
+     */
+    candleSeries.setData(historicalData);
+
+    /*
+     * نستبعد الشمعة الحالية غير المغلقة
+     * من حساب المؤشرات.
+     */
+    const closedDataSlice = historicalData.slice(0, -1);
+
+    if (closedDataSlice.length < 30) {
         return;
     }
 
-    candleSeries.setData(
-        historicalData
-    );
-
-    // --------------------------------------------------------
-    // المؤشرات تعتمد على الشموع المغلقة فقط
-    // --------------------------------------------------------
-    const closedData =
-        historicalData.slice(0, -1);
-
-    if (closedData.length < 35) {
-        return;
-    }
-
+    /*
+     * EMA 9 / EMA 21
+     */
     const ma =
-        TA.calculateMovingAverages(
-            closedData
-        );
+        TA.calculateMovingAverages(closedDataSlice);
 
+    /*
+     * VWAP
+     */
     const vwapArr =
-        TA.calculateVWAP(
-            closedData
-        );
+        TA.calculateVWAP(closedDataSlice);
 
+    /*
+     * EMA 9
+     */
     if (
         emaSeries &&
         ma &&
         Array.isArray(ma.emaFast)
     ) {
 
-        emaSeries.setData(
-            closedData
-                .map((d, i) => ({
+        const emaData = closedDataSlice
+            .map((d, i) => {
+
+                const value = ma.emaFast[i];
+
+                if (
+                    value === null ||
+                    !Number.isFinite(value)
+                ) {
+                    return null;
+                }
+
+                return {
                     time: d.time,
-                    value: ma.emaFast[i]
-                }))
-                .filter(item =>
-                    Number.isFinite(
-                        item.value
-                    )
-                )
-        );
+                    value: value
+                };
+            })
+            .filter(Boolean);
+
+        emaSeries.setData(emaData);
     }
 
+    /*
+     * EMA 21
+     */
     if (
         emaSlowSeries &&
         ma &&
         Array.isArray(ma.emaSlow)
     ) {
 
-        emaSlowSeries.setData(
-            closedData
-                .map((d, i) => ({
+        const emaSlowData = closedDataSlice
+            .map((d, i) => {
+
+                const value = ma.emaSlow[i];
+
+                if (
+                    value === null ||
+                    !Number.isFinite(value)
+                ) {
+                    return null;
+                }
+
+                return {
                     time: d.time,
-                    value: ma.emaSlow[i]
-                }))
-                .filter(item =>
-                    Number.isFinite(
-                        item.value
-                    )
-                )
-        );
+                    value: value
+                };
+            })
+            .filter(Boolean);
+
+        emaSlowSeries.setData(emaSlowData);
     }
 
+    /*
+     * VWAP
+     */
     if (
         vwapSeries &&
         Array.isArray(vwapArr)
     ) {
 
-        vwapSeries.setData(
-            closedData
-                .map((d, i) => ({
+        const vwapData = closedDataSlice
+            .map((d, i) => {
+
+                const value = vwapArr[i];
+
+                if (
+                    value === null ||
+                    !Number.isFinite(value)
+                ) {
+                    return null;
+                }
+
+                return {
                     time: d.time,
-                    value: vwapArr[i]
-                }))
-                .filter(item =>
-                    Number.isFinite(
-                        item.value
-                    )
-                )
-        );
+                    value: value
+                };
+            })
+            .filter(Boolean);
+
+        vwapSeries.setData(vwapData);
     }
 
-    // --------------------------------------------------------
-    // تشغيل محرك الإشارة
-    // --------------------------------------------------------
-    const signal =
-        TA.generateProSignal(
-            historicalData,
-            currentTF,
-            currentSpreadPct,
-            lastSignalDirection
-        );
+    /*
+     * تشغيل محرك الإشارة
+     */
+    const signal = TA.generateProSignal(
+        historicalData,
+        currentTF,
+        currentSpreadPct,
+        lastSignalDirection
+    );
 
     if (!signal) {
         return;
     }
 
-    // --------------------------------------------------------
-    // لا نكرر BUY/SELL على كل شمعة
-    //
-    // إذا ظهرت نفس الإشارة مرة أخرى،
-    // المحرك نفسه يحولها إلى BULLISH_TREND /
-    // BEARISH_TREND.
-    // --------------------------------------------------------
+    /*
+     * منع تكرار نفس Entry
+     *
+     * BUY جديد:
+     * BUY → دخول جديد
+     *
+     * نفس الاتجاه:
+     * BULLISH_TREND → الاتجاه مستمر
+     *
+     * وليس WAIT.
+     */
     if (
-        signal.direction === 'BUY'
+        signal.direction === 'BUY' &&
+        lastSignalDirection === 'BUY'
     ) {
 
-        if (
-            lastSignalDirection !== 'BUY'
-        ) {
+        signal.direction = 'BULLISH_TREND';
+        signal.entryConfidence = 0;
 
-            lastSignalDirection =
-                'BUY';
-        }
+        signal.decision =
+            'الاتجاه الصاعد مستمر — لا توجد إشارة دخول جديدة';
 
     } else if (
+        signal.direction === 'SELL' &&
+        lastSignalDirection === 'SELL'
+    ) {
+
+        signal.direction = 'BEARISH_TREND';
+        signal.entryConfidence = 0;
+
+        signal.decision =
+            'الاتجاه الهابط مستمر — لا توجد إشارة دخول جديدة';
+
+    } else if (
+        signal.direction === 'BUY' ||
         signal.direction === 'SELL'
     ) {
 
-        if (
-            lastSignalDirection !== 'SELL'
-        ) {
-
-            lastSignalDirection =
-                'SELL';
-        }
+        lastSignalDirection = signal.direction;
 
     } else if (
-        signal.direction === 'WAIT'
+        signal.direction === 'WAIT' &&
+        currentSpreadPct <= 0.04
     ) {
 
-        // لا نمسح آخر اتجاه بسبب WAIT الناتج
-        // عن عدم وجود Entry جديد.
-        //
-        // يتم الاحتفاظ بآخر اتجاه لكي يستطيع
-        // المحرك معرفة استمرار الاتجاه.
-
+        /*
+         * لا نمسح الاتجاه السابق إذا كانت
+         * النتيجة مجرد عدم وجود Entry جديدة.
+         */
+        if (
+            lastSignalDirection !== 'BUY' &&
+            lastSignalDirection !== 'SELL'
+        ) {
+            lastSignalDirection = 'WAIT';
+        }
     }
 
-    renderSignalToUI(
-        signal
-    );
-}
-
-
-// ============================================================
-// الاتصال بـ Bybit WebSocket
-// ============================================================
+    renderSignalToUI(signal);
+            }
+        <script>
+/* =========================================================
+   Bybit WebSocket
+   ========================================================= */
 function connectBybitWebSocket() {
 
-    clearReconnectTimeout();
-
-    const connectionId =
-        ++wsConnectionId;
-
-    const connectedTF =
-        currentTF;
-
-    // --------------------------------------------------------
-    // إغلاق أي اتصال قديم قبل إنشاء اتصال جديد
-    // --------------------------------------------------------
-    if (ws) {
-
-        try {
-
-            ws.onopen = null;
-            ws.onmessage = null;
-            ws.onerror = null;
-            ws.onclose = null;
-
-            if (
-                ws.readyState ===
-                    WebSocket.OPEN ||
-                ws.readyState ===
-                    WebSocket.CONNECTING
-            ) {
-
-                ws.close();
-            }
-
-        } catch (error) {
-            console.warn(
-                'Old WebSocket close error:',
-                error
-            );
-        }
-
-        ws = null;
-    }
-
-    ws =
-        new WebSocket(
-            'wss://stream.bybit.com/v5/public/linear'
-        );
-
-    ws.onopen = () => {
-
-        if (
-            connectionId !==
-            wsConnectionId ||
-            connectedTF !== currentTF
-        ) {
-            return;
-        }
-
-        const status =
-            document.getElementById(
-                'wsStatus'
-            );
-
-        if (status) {
-
-            status.innerText =
-                'بث مباشر متصل (WebSocket)';
-        }
-
-        ws.send(
-            JSON.stringify({
-                op: 'subscribe',
-
-                args: [
-                    `kline.${connectedTF}.XAUUSDT`,
-                    'tickers.XAUUSDT'
-                ]
-            })
-        );
-
-        logMessage(
-            'تم الاتصال بنجاح بشبكة Bybit WebSocket (Kline & Tickers).'
-        );
-    };
-
-
-    ws.onmessage = (event) => {
-
-        if (
-            connectionId !==
-            wsConnectionId ||
-            connectedTF !== currentTF
-        ) {
-            return;
-        }
-
-        let msg;
-
-        try {
-
-            msg =
-                JSON.parse(
-                    event.data
-                );
-
-        } catch (error) {
-
-            logMessage(
-                'خطأ في تحليل استجابة JSON من WebSocket.'
-            );
-
-            return;
-        }
-
-        // ====================================================
-        // TICKER
-        // ====================================================
-        if (
-            msg.topic &&
-            msg.topic.startsWith(
-                'tickers.'
-            ) &&
-            msg.data
-        ) {
-
-            const ticker =
-                Array.isArray(msg.data)
-                    ? msg.data[0]
-                    : msg.data;
-
-            if (
-                ticker &&
-                ticker.bid1Price &&
-                ticker.ask1Price
-            ) {
-
-                const currentBid =
-                    parseFloat(
-                        ticker.bid1Price
-                    );
-
-                const currentAsk =
-                    parseFloat(
-                        ticker.ask1Price
-                    );
-
-                if (
-                    Number.isFinite(
-                        currentBid
-                    ) &&
-                    Number.isFinite(
-                        currentAsk
-                    ) &&
-                    currentBid > 0 &&
-                    currentAsk >= currentBid
-                ) {
-
-                    // ----------------------------------------
-                    // حساب السبريد قبل التقريب
-                    // ----------------------------------------
-                    const rawSpread =
-                        currentAsk -
-                        currentBid;
-
-                    currentSpreadPct =
-                        (
-                            rawSpread /
-                            currentBid
-                        ) * 100;
-
-                    const spreadVal =
-                        rawSpread.toFixed(2);
-
-                    const spreadElement =
-                        document.getElementById(
-                            'spreadText'
-                        );
-
-                    if (spreadElement) {
-
-                        spreadElement.innerText =
-                            `${spreadVal} (${currentSpreadPct.toFixed(3)}%)`;
-                    }
-
-                    const filterText =
-                        document.getElementById(
-                            'marketFilterText'
-                        );
-
-                    if (
-                        currentSpreadPct >
-                        0.04
-                    ) {
-
-                        if (filterText) {
-
-                            filterText.innerText =
-                                'تحذير: السبريد مرتفع (موقف مؤقتاً)';
-
-                            filterText.style.color =
-                                '#ef4444';
-                        }
-
-                    } else {
-
-                        if (filterText) {
-
-                            filterText.innerText =
-                                'السبريد طبيعي ومستقر';
-
-                            filterText.style.color =
-                                '#22c55e';
-                        }
-                    }
-                }
-            }
-        }
-
-
-        // ====================================================
-        // KLINE
-        // ====================================================
-        if (
-            msg.topic &&
-            msg.topic.startsWith(
-                'kline.'
-            ) &&
-            Array.isArray(msg.data) &&
-            msg.data.length > 0
-        ) {
-
-            const klineData =
-                msg.data[0];
-
-            const candleTime =
-                parseInt(
-                    klineData.start,
-                    10
-                ) / 1000;
-
-            const updatedCandle = {
-
-                time: candleTime,
-
-                open:
-                    parseFloat(
-                        klineData.open
-                    ),
-
-  function connectBybitWebSocket() {
-
     const currentId = ++wsConnectionId;
+    const requestedTF = currentTF;
 
     clearReconnectTimer();
 
     /*
-     * إغلاق أي WebSocket قديم قبل إنشاء الجديد
+     * إغلاق أي اتصال سابق قبل إنشاء اتصال جديد
      */
     if (ws) {
         try {
@@ -3436,102 +2745,89 @@ function connectBybitWebSocket() {
             ws.onclose = null;
             ws.close();
         } catch (e) {
-            console.warn('Old WebSocket close warning:', e);
+            console.warn('Old WebSocket close error:', e);
         }
 
         ws = null;
     }
 
-
     ws = new WebSocket(
         'wss://stream.bybit.com/v5/public/linear'
     );
 
-
     ws.onopen = () => {
 
-        if (currentId !== wsConnectionId) {
+        if (
+            currentId !== wsConnectionId ||
+            requestedTF !== currentTF
+        ) {
+            try {
+                ws.close();
+            } catch (e) {}
             return;
         }
 
-        clearReconnectTimer();
-
-        const status =
-            document.getElementById('wsStatus');
+        const status = document.getElementById('wsStatus');
 
         if (status) {
             status.innerText =
                 'بث مباشر متصل (WebSocket)';
         }
 
-
-        ws.send(
-            JSON.stringify({
-                op: 'subscribe',
-                args: [
-                    `kline.${currentTF}.XAUUSDT`,
-                    'tickers.XAUUSDT'
-                ]
-            })
-        );
-
+        ws.send(JSON.stringify({
+            op: 'subscribe',
+            args: [
+                `kline.${requestedTF}.XAUUSDT`,
+                'tickers.XAUUSDT'
+            ]
+        }));
 
         logMessage(
             'تم الاتصال بنجاح بشبكة Bybit WebSocket (Kline & Tickers).'
         );
     };
 
-
     ws.onmessage = (event) => {
 
-        /*
-         * حماية من WebSocket قديم
-         */
-        if (currentId !== wsConnectionId) {
+        if (
+            currentId !== wsConnectionId ||
+            requestedTF !== currentTF
+        ) {
             return;
         }
-
 
         let msg;
 
         try {
-
             msg = JSON.parse(event.data);
-
-        } catch (error) {
-
+        } catch (err) {
             logMessage(
                 'خطأ في تحليل استجابة JSON من WebSocket.'
             );
-
             return;
         }
 
-
         /* =====================================================
-           TICKER / SPREAD
+           TICKER — حساب السبريد
            ===================================================== */
-
         if (
             msg.topic &&
             msg.topic.startsWith('tickers.') &&
             msg.data
         ) {
 
-            const tickerData = msg.data;
-
+            const ticker = msg.data;
 
             if (
-                tickerData.bid1Price &&
-                tickerData.ask1Price
+                ticker.bid1Price &&
+                ticker.ask1Price
             ) {
 
                 const currentBid =
-                    Number(tickerData.bid1Price);
+                    parseFloat(ticker.bid1Price);
 
                 const currentAsk =
-                    Number(tickerData.ask1Price);
-
+                    parseFloat(ticker.ask1Price);
 
                 if (
                     Number.isFinite(currentBid) &&
@@ -3542,47 +2838,33 @@ function connectBybitWebSocket() {
 
                     /*
                      * مهم:
-                     * الحساب يتم من rawSpread
-                     * قبل toFixed().
+                     * لا نستخدم toFixed قبل الحساب.
                      */
-
                     const rawSpread =
                         currentAsk - currentBid;
-
 
                     currentSpreadPct =
                         (rawSpread / currentBid) * 100;
 
-
                     const spreadVal =
                         rawSpread.toFixed(2);
 
-
                     const spreadText =
-                        document.getElementById(
-                            'spreadText'
-                        );
-
+                        document.getElementById('spreadText');
 
                     if (spreadText) {
-
                         spreadText.innerText =
                             `${spreadVal} (${currentSpreadPct.toFixed(3)}%)`;
                     }
-
 
                     const marketFilterText =
                         document.getElementById(
                             'marketFilterText'
                         );
 
-
-                    if (
-                        currentSpreadPct > 0.04
-                    ) {
+                    if (currentSpreadPct > 0.04) {
 
                         if (marketFilterText) {
-
                             marketFilterText.innerText =
                                 'تحذير: السبريد مرتفع (موقف مؤقتاً)';
 
@@ -3593,7 +2875,6 @@ function connectBybitWebSocket() {
                     } else {
 
                         if (marketFilterText) {
-
                             marketFilterText.innerText =
                                 'السبريد طبيعي ومستقر';
 
@@ -3605,11 +2886,9 @@ function connectBybitWebSocket() {
             }
         }
 
-
         /* =====================================================
            KLINE
            ===================================================== */
-
         if (
             msg.topic &&
             msg.topic.startsWith('kline.') &&
@@ -3617,40 +2896,25 @@ function connectBybitWebSocket() {
             msg.data.length > 0
         ) {
 
-            const klineData =
-                msg.data[0];
-
+            const klineData = msg.data[0];
 
             const candleTime =
-                Number(klineData.start) / 1000;
-
-
-            if (!Number.isFinite(candleTime)) {
-                return;
-            }
-
+                parseInt(klineData.start, 10) / 1000;
 
             const updatedCandle = {
-
                 time: candleTime,
-
-                open: Number(klineData.open),
-
-                high: Number(klineData.high),
-
-                low: Number(klineData.low),
-
-                close: Number(klineData.close),
-
-                volume: Number(klineData.volume)
+                open: parseFloat(klineData.open),
+                high: parseFloat(klineData.high),
+                low: parseFloat(klineData.low),
+                close: parseFloat(klineData.close),
+                volume: parseFloat(klineData.volume)
             };
 
-
             /*
-             * حماية البيانات
+             * حماية من بيانات غير صالحة
              */
-
             if (
+                !Number.isFinite(updatedCandle.time) ||
                 !Number.isFinite(updatedCandle.open) ||
                 !Number.isFinite(updatedCandle.high) ||
                 !Number.isFinite(updatedCandle.low) ||
@@ -3660,13 +2924,481 @@ function connectBybitWebSocket() {
                 return;
             }
 
-
             const priceElement =
                 document.getElementById('price');
 
-
             if (priceElement) {
-
                 priceElement.innerText =
                     updatedCandle.close.toFixed(2);
-           
+            }
+
+            /*
+             * إذا لم توجد بيانات تاريخية
+             */
+            if (!historicalData.length) {
+                historicalData.push(updatedCandle);
+                candleSeries.update(updatedCandle);
+                return;
+            }
+
+            const lastIdx =
+                historicalData.length - 1;
+
+            const lastCandle =
+                historicalData[lastIdx];
+
+            /* =================================================
+               تحديث الشمعة الحالية
+               ================================================= */
+            if (
+                lastCandle.time === candleTime
+            ) {
+
+                historicalData[lastIdx] =
+                    updatedCandle;
+
+            }
+
+            /* =================================================
+               شمعة جديدة
+               ================================================= */
+            else if (
+                candleTime > lastCandle.time
+            ) {
+
+                historicalData.push(
+                    updatedCandle
+                );
+
+                const candleStateText =
+                    document.getElementById(
+                        'candleStateText'
+                    );
+
+                if (candleStateText) {
+                    candleStateText.innerText =
+                        'شمعة جديدة جارية (قيد التكوين)';
+
+                    candleStateText.style.color =
+                        '#3b82f6';
+                }
+            }
+
+            /*
+             * تجاهل أي شمعة قديمة تصل متأخرة
+             */
+            else {
+                return;
+            }
+
+            /* =================================================
+               تحديث الرسم مباشرة
+               ================================================= */
+            candleSeries.update(
+                updatedCandle
+            );
+
+            /* =================================================
+               إغلاق الشمعة رسمياً
+               ================================================= */
+            if (
+                klineData.confirm === true &&
+                candleTime !== lastProcessedCandleTime
+            ) {
+
+                lastProcessedCandleTime =
+                    candleTime;
+
+                const candleStateText =
+                    document.getElementById(
+                        'candleStateText'
+                    );
+
+                if (candleStateText) {
+
+                    candleStateText.innerText =
+                        'تم إغلاق الشمعة وتأكيدها';
+
+                    candleStateText.style.color =
+                        '#22c55e';
+                }
+
+                logMessage(
+                    'تم تأكيد إغلاق الشمعة الأخيرة رسمياً. بدء التحليل الدقيق.'
+                );
+
+                /*
+                 * إعادة حساب:
+                 * EMA
+                 * VWAP
+                 * RSI
+                 * ADX
+                 * RVOL
+                 * Market Strength
+                 * Buy/Sell Confidence
+                 * SL / TP
+                 */
+                updateChartAndEngine();
+            }
+        }
+    };
+
+    /* =========================================================
+       WebSocket ERROR
+       ========================================================= */
+    ws.onerror = () => {
+
+        if (
+            currentId !== wsConnectionId ||
+            requestedTF !== currentTF
+        ) {
+            return;
+        }
+
+        logMessage(
+            'خطأ في اتصال WebSocket.'
+        );
+    };
+
+    /* =========================================================
+       WebSocket CLOSE
+       ========================================================= */
+    ws.onclose = () => {
+
+        if (
+            currentId !== wsConnectionId ||
+            requestedTF !== currentTF
+        ) {
+            return;
+        }
+
+        const status =
+            document.getElementById('wsStatus');
+
+        if (status) {
+            status.innerText =
+                'انقطع الاتصال - جاري إعادة الاتصال الآمن...';
+        }
+
+        /*
+         * مهم جداً:
+         * نمسح أي مؤقت سابق قبل إنشاء مؤقت جديد.
+         */
+        clearReconnectTimer();
+
+        reconnectTimeout = setTimeout(() => {
+
+            reconnectTimeout = null;
+
+            if (
+                currentId === wsConnectionId &&
+                requestedTF === currentTF
+            ) {
+                connectBybitWebSocket();
+            }
+
+        }, 3000);
+    };
+}
+
+
+/* =========================================================
+   عرض الإشارة في الواجهة
+   ========================================================= */
+function renderSignalToUI(signal) {
+
+    if (!signal) return;
+
+    /* =====================================================
+       السعر
+       ===================================================== */
+    const priceElement =
+        document.getElementById('price');
+
+    if (
+        priceElement &&
+        Number.isFinite(signal.price)
+    ) {
+        priceElement.innerText =
+            signal.price.toFixed(2);
+    }
+
+    /* =====================================================
+       RSI / ADX
+       ===================================================== */
+    const rsiAdxVal =
+        document.getElementById('rsiAdxVal');
+
+    if (rsiAdxVal) {
+        rsiAdxVal.innerText =
+            `${signal.rsi ?? '--'} / ${signal.adx ?? '--'}`;
+    }
+
+    /* =====================================================
+       RVOL
+       ===================================================== */
+    const rvolVal =
+        document.getElementById('rvolVal');
+
+    if (rvolVal) {
+        rvolVal.innerText =
+            signal.rvol ?? '--';
+    }
+
+    /* =====================================================
+       Range Close Position
+       ===================================================== */
+    if (signal.candleStats) {
+
+        const bullish =
+            Number.isFinite(
+                signal.candleStats.bullish
+            )
+                ? signal.candleStats.bullish
+                : 50;
+
+        const bearish =
+            Number.isFinite(
+                signal.candleStats.bearish
+            )
+                ? signal.candleStats.bearish
+                : 50;
+
+        const bullishPercentText =
+            document.getElementById(
+                'bullishPercentText'
+            );
+
+        const bearishPercentText =
+            document.getElementById(
+                'bearishPercentText'
+            );
+
+        const bullishBar =
+            document.getElementById(
+                'bullishBar'
+            );
+
+        const bearishBar =
+            document.getElementById(
+                'bearishBar'
+            );
+
+        if (bullishPercentText) {
+            bullishPercentText.innerText =
+                `إغلاق علوي: ${bullish}%`;
+        }
+
+        if (bearishPercentText) {
+            bearishPercentText.innerText =
+                `إغلاق سفلي: ${bearish}%`;
+        }
+
+        if (bullishBar) {
+            bullishBar.style.width =
+                `${bullish}%`;
+        }
+
+        if (bearishBar) {
+            bearishBar.style.width =
+                `${bearish}%`;
+        }
+    }
+
+    /* =====================================================
+       Market Strength
+       ===================================================== */
+    const marketStrengthVal =
+        document.getElementById(
+            'marketStrengthVal'
+        );
+
+    if (marketStrengthVal) {
+
+        marketStrengthVal.innerText =
+            `${signal.marketStrength ?? 0} / 100`;
+    }
+
+    /* =====================================================
+       Entry Confidence
+       ===================================================== */
+
+    /*
+     * المحرك الجديد قد يرجع:
+     * buyConfidence
+     * sellConfidence
+     *
+     * والواجهة القديمة قد تتوقع:
+     * entryConfidence
+     *
+     * لذلك نستخدم الاتجاه الحالي لتحديد
+     * القيمة الصحيحة بدون undefined.
+     */
+    let displayedConfidence = 0;
+
+    if (signal.direction === 'BUY') {
+
+        displayedConfidence =
+            Number.isFinite(signal.buyConfidence)
+                ? signal.buyConfidence
+                : (
+                    Number.isFinite(signal.entryConfidence)
+                        ? signal.entryConfidence
+                        : 0
+                );
+
+    } else if (signal.direction === 'SELL') {
+
+        displayedConfidence =
+            Number.isFinite(signal.sellConfidence)
+                ? signal.sellConfidence
+                : (
+                    Number.isFinite(signal.entryConfidence)
+                        ? signal.entryConfidence
+                        : 0
+                );
+
+    } else if (
+        signal.direction === 'BULLISH_TREND'
+    ) {
+
+        displayedConfidence =
+            Number.isFinite(signal.buyConfidence)
+                ? signal.buyConfidence
+                : 0;
+
+    } else if (
+        signal.direction === 'BEARISH_TREND'
+    ) {
+
+        displayedConfidence =
+            Number.isFinite(signal.sellConfidence)
+                ? signal.sellConfidence
+                : 0;
+
+    } else {
+
+        displayedConfidence =
+            Number.isFinite(signal.entryConfidence)
+                ? signal.entryConfidence
+                : 0;
+    }
+
+    const entryConfidenceVal =
+        document.getElementById(
+            'entryConfidenceVal'
+        );
+
+    if (entryConfidenceVal) {
+
+        entryConfidenceVal.innerText =
+            `${displayedConfidence} / 100`;
+    }
+
+    /* =====================================================
+       Signal Tag
+       ===================================================== */
+    const signalTag =
+        document.getElementById(
+            'signalTag'
+        );
+
+    if (signalTag) {
+
+        if (signal.direction === 'BUY') {
+
+            signalTag.className =
+                'signal-tag signal-strong';
+
+            signalTag.innerText =
+                'إشارة شراء قوية مؤكدة (BUY CONFIRMED)';
+
+        } else if (signal.direction === 'SELL') {
+
+            signalTag.className =
+                'signal-tag signal-strong-sell';
+
+            signalTag.innerText =
+                'إشارة بيع قوية مؤكدة (SELL CONFIRMED)';
+
+        } else if (
+            signal.direction === 'BULLISH_TREND'
+        ) {
+
+            signalTag.className =
+                'signal-tag signal-trend';
+
+            signalTag.innerText =
+                signal.decision ||
+                'الاتجاه الصاعد مستمر — لا توجد إشارة دخول جديدة';
+
+        } else if (
+            signal.direction === 'BEARISH_TREND'
+        ) {
+
+            signalTag.className =
+                'signal-tag signal-trend';
+
+            signalTag.innerText =
+                signal.decision ||
+                'الاتجاه الهابط مستمر — لا توجد إشارة دخول جديدة';
+
+        } else {
+
+            signalTag.className =
+                'signal-tag signal-wait';
+
+            signalTag.innerText =
+                signal.decision ||
+                'انتظار توافق المؤشرات والفلاتر...';
+        }
+    }
+
+    /* =====================================================
+       SL / TP
+       ===================================================== */
+    const slVal =
+        document.getElementById('slVal');
+
+    const tp1Val =
+        document.getElementById('tp1Val');
+
+    const tp2Val =
+        document.getElementById('tp2Val');
+
+    if (slVal) {
+        slVal.innerText =
+            signal.suggestedSL !== null &&
+            signal.suggestedSL !== undefined
+                ? signal.suggestedSL
+                : '---';
+    }
+
+    if (tp1Val) {
+        tp1Val.innerText =
+            signal.suggestedTP1 !== null &&
+            signal.suggestedTP1 !== undefined
+                ? signal.suggestedTP1
+                : '---';
+    }
+
+    if (tp2Val) {
+        tp2Val.innerText =
+            signal.suggestedTP2 !== null &&
+            signal.suggestedTP2 !== undefined
+                ? signal.suggestedTP2
+                : '---';
+    }
+}
+
+
+/* =========================================================
+   تشغيل النظام
+   ========================================================= */
+initChart();
+
+fetchInitialHistoryAndConnectWS();
+</script>
+
+</body>
+</html>
