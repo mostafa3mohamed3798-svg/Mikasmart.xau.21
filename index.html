@@ -2,8 +2,9 @@
 <head>  
 <meta charset="UTF-8">  
 <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-<title>Mika Pro - Sequential Replay State Machine SMC Engine</title>  
-<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>  <style>  
+<title>Mika Pro - Strict Causal SMC Engine</title>  
+<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>  
+<style>  
 * { box-sizing: border-box; margin: 0; padding: 0; }  
 body {  
     background-color: #04060b;  
@@ -30,157 +31,155 @@ body {
 .price-display { font-size: 2.6rem; font-weight: 900; color: #38bdf8; letter-spacing: 0.5px; margin: 4px 0; line-height: 1; }  
 .status-badge { font-size: 0.75rem; color: #34d399; margin-top: 6px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }  
 .status-badge::before { content: ""; width: 8px; height: 8px; background-color: #34d399; border-radius: 50%; box-shadow: 0 0 8px #34d399; animation: pulse 1.5s infinite; }  
-@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }  
-  
-.lifecycle-tracker {  
-    display: flex;  
-    justify-content: space-between;  
-    background: #04060b;  
-    border: 1px solid #1e293b;  
-    padding: 8px;  
-    border-radius: 8px;  
-    margin: 10px 0;  
-    font-size: 0.58rem;  
-    color: #64748b;  
-    overflow-x: auto;  
-    gap: 3px;  
-}  
-.life-step { padding: 3px 4px; border-radius: 4px; background: #0d1322; border: 1px solid #1e293b; white-space: nowrap; }  
-.life-step.active { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: #38bdf8; font-weight: bold; }  
-.life-step.done { background: rgba(52, 211, 153, 0.15); color: #34d399; border-color: rgba(52, 211, 153, 0.3); }  
-.life-step.invalid { background: rgba(248, 113, 113, 0.15); color: #f87171; border-color: rgba(248, 113, 113, 0.3); }  
-  
-.market-stats-bar {  
-    display: flex;  
-    justify-content: space-between;  
-    background: rgba(13, 19, 34, 0.7);  
-    border: 1px solid #1e293b;  
-    padding: 8px 12px;  
-    border-radius: 8px;  
-    margin: 8px 0;  
-    font-size: 0.75rem;  
-    color: #94a3b8;  
-}  
-.market-stats-bar span { color: #f8fafc; font-weight: bold; }  
-  
-.signal-container {  
-    display: flex;  
-    justify-content: space-around;  
-    align-items: center;  
-    margin-top: 8px;  
-    padding-top: 8px;  
-    border-top: 1px solid #1e293b;  
-    flex-wrap: wrap;  
-    gap: 8px;  
-}  
-.signal-tag { padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; }  
-.signal-wait { background-color: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); }  
-.signal-strong { background-color: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }  
-.signal-strong-sell { background-color: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }  
-  
-.targets-box {  
-    display: flex;  
-    justify-content: space-around;  
-    width: 100%;  
-    margin-top: 8px;  
-    background: #04060b;  
-    padding: 8px;  
-    border-radius: 8px;  
-    border: 1px solid #1e293b;  
-    font-size: 0.8rem;  
-}  
-.target-item span { color: #38bdf8; font-weight: bold; }  
-  
-.filters-dashboard {  
-    display: grid;  
-    grid-template-columns: repeat(3, 1fr);  
-    gap: 8px;  
-    width: 100%;  
-    max-width: 700px;  
-    margin-bottom: 12px;  
-}  
-.filter-card {  
-    background: #0d1322;  
-    border: 1px solid #1e293b;  
-    padding: 8px;  
-    border-radius: 10px;  
-    text-align: center;  
-}  
-.filter-label { font-size: 0.62rem; color: #64748b; font-weight: 700; margin-bottom: 3px; }  
-.filter-value { font-size: 0.75rem; font-weight: bold; color: #f8fafc; }  
-  
-.chart-card {  
-    background: #0d1322;  
-    border-radius: 16px;  
-    padding: 12px;  
-    width: 100%;  
-    max-width: 700px;  
-    border: 1px solid #1e293b;  
-    display: flex;  
-    flex-direction: column;  
-    gap: 10px;  
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6);  
-}  
-.chart-toolbar {  
-    display: flex;  
-    justify-content: space-between;  
-    align-items: center;  
-    flex-wrap: wrap;  
-    gap: 6px;  
-    background: #04060b;  
-    padding: 8px 12px;  
-    border-radius: 10px;  
-    border: 1px solid #1e293b;  
-}  
-.tf-group, .indicator-group { display: flex; gap: 6px; flex-wrap: wrap; }  
-.tf-btn, .indicator-btn {  
-    background: #1e293b;  
-    color: #94a3b8;  
-    border: 1px solid #334155;  
-    padding: 5px 10px;  
-    border-radius: 6px;  
-    font-size: 0.75rem;  
-    font-weight: 700;  
-    cursor: pointer;  
-}  
-.tf-btn.active, .indicator-btn.active { background: #38bdf8; color: #04060b; border-color: #38bdf8; }  
-.chart-container {  
-    width: 100%;  
-    height: 380px;  
-    position: relative;  
-    border-radius: 10px;  
-    overflow: hidden;  
-    border: 1px solid #1e293b;  
-}  
-#chart { width: 100%; height: 100%; }  
-</style>  </head>  
-<body>  <div class="top-price-card">  
-    <div class="header-title">Mika Pro - Sequential Replay SMC Engine</div>  
-    <div class="symbol-name">Bybit Linear - XAUUSDT (True Event-Driven State Machine)</div>  
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }  .lifecycle-tracker {
+display: flex;
+justify-content: space-between;
+background: #04060b;
+border: 1px solid #1e293b;
+padding: 8px;
+border-radius: 8px;
+margin: 10px 0;
+font-size: 0.58rem;
+color: #64748b;
+overflow-x: auto;
+gap: 3px;
+}
+.life-step { padding: 3px 4px; border-radius: 4px; background: #0d1322; border: 1px solid #1e293b; white-space: nowrap; }
+.life-step.active { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: #38bdf8; font-weight: bold; }
+.life-step.done { background: rgba(52, 211, 153, 0.15); color: #34d399; border-color: rgba(52, 211, 153, 0.3); }
+.life-step.invalid { background: rgba(248, 113, 113, 0.15); color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
+
+.market-stats-bar {
+display: flex;
+justify-content: space-between;
+background: rgba(13, 19, 34, 0.7);
+border: 1px solid #1e293b;
+padding: 8px 12px;
+border-radius: 8px;
+margin: 8px 0;
+font-size: 0.75rem;
+color: #94a3b8;
+}
+.market-stats-bar span { color: #f8fafc; font-weight: bold; }
+
+.signal-container {
+display: flex;
+justify-content: space-around;
+align-items: center;
+margin-top: 8px;
+padding-top: 8px;
+border-top: 1px solid #1e293b;
+flex-wrap: wrap;
+gap: 8px;
+}
+.signal-tag { padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; }
+.signal-wait { background-color: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); }
+.signal-strong { background-color: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+.signal-strong-sell { background-color: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
+
+.targets-box {
+display: flex;
+justify-content: space-around;
+width: 100%;
+margin-top: 8px;
+background: #04060b;
+padding: 8px;
+border-radius: 8px;
+border: 1px solid #1e293b;
+font-size: 0.8rem;
+}
+.target-item span { color: #38bdf8; font-weight: bold; }
+
+.filters-dashboard {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 8px;
+width: 100%;
+max-width: 700px;
+margin-bottom: 12px;
+}
+.filter-card {
+background: #0d1322;
+border: 1px solid #1e293b;
+padding: 8px;
+border-radius: 10px;
+text-align: center;
+}
+.filter-label { font-size: 0.62rem; color: #64748b; font-weight: 700; margin-bottom: 3px; }
+.filter-value { font-size: 0.75rem; font-weight: bold; color: #f8fafc; }
+
+.chart-card {
+background: #0d1322;
+border-radius: 16px;
+padding: 12px;
+width: 100%;
+max-width: 700px;
+border: 1px solid #1e293b;
+display: flex;
+flex-direction: column;
+gap: 10px;
+box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+.chart-toolbar {
+display: flex;
+justify-content: space-between;
+align-items: center;
+flex-wrap: wrap;
+gap: 6px;
+background: #04060b;
+padding: 8px 12px;
+border-radius: 10px;
+border: 1px solid #1e293b;
+}
+.tf-group, .indicator-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.tf-btn, .indicator-btn {
+background: #1e293b;
+color: #94a3b8;
+border: 1px solid #334155;
+padding: 5px 10px;
+border-radius: 6px;
+font-size: 0.75rem;
+font-weight: 700;
+cursor: pointer;
+}
+.tf-btn.active, .indicator-btn.active { background: #38bdf8; color: #04060b; border-color: #38bdf8; }
+.chart-container {
+width: 100%;
+height: 380px;
+position: relative;
+border-radius: 10px;
+overflow: hidden;
+border: 1px solid #1e293b;
+}
+#chart { width: 100%; height: 100%; }
+</style>
+
+</head>  
+<body>  
+<div class="top-price-card">  
+    <div class="header-title">Mika Pro - Strict Causal SMC Engine</div>  
+    <div class="symbol-name">Bybit Linear - XAUUSDT (Event-Driven Causal Chain)</div>  
     <div id="price" class="price-display">جاري التحميل...</div>  
-    <div class="status-badge" id="stateBadge">حالة النظام: تشغيل المحاكاة التسلسلية</div>  <div class="lifecycle-tracker">  
-    <div id="life-1" class="life-step">SETUP</div>  
-    <div id="life-2" class="life-step">ARMED</div>  
-    <div id="life-3" class="life-step">RETEST</div>  
-    <div id="life-4" class="life-step">CONFIRMED</div>  
-    <div id="life-5" class="life-step">ENTRY</div>  
-    <div id="life-6" class="life-step">ACTIVE</div>  
-    <div id="life-7" class="life-step">TP1</div>  
-    <div id="life-8" class="life-step">TP2/SL</div>  
-    <div id="life-9" class="life-step">CLOSED</div>  
-    <div id="life-10" class="life-step">INVALID</div>  
-</div>  
-  
-<div class="market-stats-bar">  
+    <div class="status-badge" id="stateBadge">حالة النظام: SETUP</div>  
+    <div class="lifecycle-tracker">  
+        <div id="life-1" class="life-step">SETUP</div>  
+        <div id="life-2" class="life-step">ARMED</div>  
+        <div id="life-3" class="life-step">RETEST</div>  
+        <div id="life-4" class="life-step">CONFIRMED</div>  
+        <div id="life-5" class="life-step">ACTIVE</div>  
+        <div id="life-6" class="life-step">TP1</div>  
+        <div id="life-7" class="life-step">CLOSED</div>  
+        <div id="life-8" class="life-step">INVALIDATED</div>  
+    </div>  <div class="market-stats-bar">  
     <div>Dealing Range: <span id="dealingRangeVal">--</span></div>  
     <div>Current State: <span id="tradeLifecycleVal" style="color: #38bdf8;">SETUP</span></div>  
 </div>  
-  
+
 <div class="signal-container">  
-    <span id="signalTag" class="signal-tag signal-wait">تنفيذ الـ Replay خطوة بخطوة...</span>  
-    <span class="signal-power">Score: <strong id="signalPower" style="color: #fff;">0%</strong></span>  
+    <span id="signalTag" class="signal-tag signal-wait">جاري التحقق من السلسلة...</span>  
+    <span class="signal-power">Chain Integrity: <strong id="signalPower" style="color: #fff;">0 Evt</strong></span>  
 </div>  
-  
+
 <div class="targets-box">  
     <div class="target-item">وقف الخسارة (SL): <span id="slVal">---</span></div>  
     <div class="target-item">الهدف الأول (TP1): <span id="tp1Val">---</span></div>  
@@ -189,28 +188,28 @@ body {
 
 </div>  <div class="filters-dashboard">  
     <div class="filter-card">  
-        <div class="filter-label">STRUCTURE (REPLAY)</div>  
-        <div id="structState" class="filter-value" style="color: #38bdf8;">Replaying</div>  
+        <div class="filter-label">EXTERNAL STRUCTURE</div>  
+        <div id="structState" class="filter-value" style="color: #38bdf8;">Analyzing</div>  
     </div>  
     <div class="filter-card">  
-        <div class="filter-label">SWEEP + TTL</div>  
+        <div class="filter-label">LIQUIDITY SWEEP</div>  
         <div id="sweepState" class="filter-value" style="color: #eab308;">Waiting</div>  
     </div>  
     <div class="filter-card">  
-        <div class="filter-label">CAUSAL MSS</div>  
+        <div class="filter-label">INTERNAL MSS (CAUSAL)</div>  
         <div id="mssState" class="filter-value" style="color: #38bdf8;">Waiting</div>  
     </div>  
     <div class="filter-card">  
-        <div class="filter-label">DISP -> OB / FVG</div>  
+        <div class="filter-label">CAUSAL ZONE (OB/FVG)</div>  
         <div id="causalZone" class="filter-value" style="color: #38bdf8;">None</div>  
     </div>  
     <div class="filter-card">  
-        <div class="filter-label">RETEST & TRIGGER</div>  
+        <div class="filter-label">TRIGGER & CONFIRM</div>  
         <div id="triggerState" class="filter-value" style="color: #38bdf8;">Idle</div>  
     </div>  
     <div class="filter-card">  
-        <div class="filter-label">LIFECYCLE STATUS</div>  
-        <div id="lifecycleStateVal" class="filter-value" style="color: #34d399;">SETUP</div>  
+        <div class="filter-label">CHAINED EVENT LEDGER</div>  
+        <div id="ledgerVal" class="filter-value" style="color: #34d399;">0 Chain Links</div>  
     </div>  
 </div>  <div class="chart-card">  
     <div class="chart-toolbar">  
@@ -220,17 +219,16 @@ body {
             <button class="tf-btn" onclick="changeTimeframe('15m', event)">15m</button>  
         </div>  
         <div class="indicator-group">  
-            <button id="obToggle" class="indicator-btn active" onclick="toggleOB()">Strict OB</button>  
-            <button id="fvgToggle" class="indicator-btn active" onclick="toggleFVG()">Strict FVG</button>  
+            <button id="obToggle" class="indicator-btn active" onclick="toggleOB()">Causal Zone</button>  
         </div>  
     </div>  
     <div class="chart-container">  
         <div id="chart"></div>  
     </div>  
 </div>
-  <script>  
+<script>  
 /* ==========================================================================  
-   [محرك Sequential Replay State Machine SMC]  
+   [Strict Causal SMC State Machine Engine]  
    ========================================================================== */  
 (function (global) {  
 "use strict";  
@@ -255,275 +253,403 @@ function calculateATR(data, period = 14) {
         const prevClose = data[i - 1].close;  
         return Math.max(c.high - c.low, Math.abs(c.high - prevClose), Math.abs(c.low - prevClose));  
     });  
-    return calculateWilderEMA(tr, period);  
+    const out = calculateWilderEMA(tr, period);  
+    let firstValid = out.find(v => v !== null) || 1.0;  
+    for (let i = 0; i < out.length; i++) {  
+        if (out[i] === null) out[i] = firstValid;  
+    }  
+    return out;  
 }  
   
-class SequentialReplaySMCEngine {  
+class StrictCausalSMCEngine {  
     constructor() {  
         this.resetState();  
     }  
   
     resetState() {  
-        this.lifecycle = 'SETUP'; // SETUP -> ARMED -> RETEST -> CONFIRMED -> ENTRY -> ACTIVE -> TP1 -> TP2/SL -> CLOSED -> INVALIDATED  
-        this.events = {  
-            sweep: null,  
-            mss: null,  
-            disp: null,  
-            ob: null,  
-            fvg: null,  
-            retest: false,  
-            trigger: false,  
-            activeTrade: null  
-        };  
-        this.swings = [];  
+        this.state = 'SETUP'; // SETUP -> ARMED -> RETEST -> CONFIRMED -> ACTIVE -> TP1 -> CLOSED / INVALIDATED  
+        this.externalSwings = [];  
+        this.internalSwings = [];  
+        this.eventLedger = [];  
         this.protectedHigh = null;  
         this.protectedLow = null;  
+        this.activeTrade = null;  
+          
+        // Causal Chain State  
+        this.chain = {  
+            sweepEvent: null,  
+            internalMssEvent: null,  
+            displacementEvent: null,  
+            causalZoneEvent: null,  
+            retestEvent: null,  
+            confirmEvent: null  
+        };  
     }  
   
-    // تشغيل المحاكاة التاريخية شمعة بشمعة (Sequential Historical Replay)  
+    // 10. Add Event -> causedByEventId chain  
+    pushEvent(type, barIndex, payload, causedByEventId = null) {  
+        const event = {  
+            id: this.eventLedger.length + 1,  
+            type,  
+            barIndex, // 7. Fix barIndex bug (استخدام مؤشر الصفيحة الحقيقية دائماً)  
+            causedByEventId,  
+            payload  
+        };  
+        this.eventLedger.push(event);  
+        return event;  
+    }  
+  
+    transitionTo(newState, barIndex, reason, causedByEventId) {  
+        this.state = newState;  
+        this.pushEvent('STATE_TRANSITION', barIndex, { newState, reason }, causedByEventId);  
+    }  
+  
+    // 1. Fix Protected Structure Snapshot & 2. Build True Internal Structure  
+    updateStructure(subData, currentIndex) {  
+        const extWindow = 5;  
+        const intWindow = 2;  
+          
+        if (currentIndex < extWindow * 2) return;  
+          
+        const highs = subData.map(d => d.high);  
+        const lows = subData.map(d => d.low);  
+  
+        // External Swings (Structure الرئيسية)  
+        const extCand = currentIndex - extWindow;  
+        let isExtH = true, isExtL = true;  
+        for (let j = extCand - extWindow; j <= extCand + extWindow; j++) {  
+            if (highs[j] > highs[extCand]) isExtH = false;  
+            if (lows[j] < lows[extCand]) isExtL = false;  
+        }  
+  
+        if (isExtH && !this.externalSwings.some(s => s.type === 'HIGH' && s.index === extCand)) {  
+            this.externalSwings.push({ type: 'HIGH', index: extCand, price: highs[extCand], confirmedAtIndex: currentIndex });  
+        }  
+        if (isExtL && !this.externalSwings.some(s => s.type === 'LOW' && s.index === extCand)) {  
+            this.externalSwings.push({ type: 'LOW', index: extCand, price: lows[extCand], confirmedAtIndex: currentIndex });  
+        }  
+  
+        // Internal Swings (Structure الداخلية الصريحة)  
+        const intCand = currentIndex - intWindow;  
+        let isIntH = true, isIntL = true;  
+        for (let j = intCand - intWindow; j <= intCand + intWindow; j++) {  
+            if (highs[j] > highs[intCand]) isIntH = false;  
+            if (lows[j] < lows[intCand]) isIntL = false;  
+        }  
+  
+        if (isIntH && !this.internalSwings.some(s => s.type === 'HIGH' && s.index === intCand)) {  
+            this.internalSwings.push({ type: 'HIGH', index: intCand, price: highs[intCand], confirmedAtIndex: currentIndex });  
+        }  
+        if (isIntL && !this.internalSwings.some(s => s.type === 'LOW' && s.index === intCand)) {  
+            this.internalSwings.push({ type: 'LOW', index: intCand, price: lows[intCand], confirmedAtIndex: currentIndex });  
+        }  
+  
+        // Snapshots المتاحة زمنيًا بدون Look-ahead  
+        const validExtHighs = this.externalSwings.filter(s => s.type === 'HIGH' && s.confirmedAtIndex <= currentIndex);  
+        const validExtLows = this.externalSwings.filter(s => s.type === 'LOW' && s.confirmedAtIndex <= currentIndex);  
+  
+        if (validExtHighs.length > 0) this.protectedHigh = validExtHighs[validExtHighs.length - 1];  
+        if (validExtLows.length > 0) this.protectedLow = validExtLows[validExtLows.length - 1];  
+    }  
+  
+    // 9. Separate Replay Engine (Sequential State Machine Replay)  
     replay(data) {  
         if (!data || data.length < 60) return null;  
-          
-        // استبعاد الشمعة الحالية غير المكتملة لمنع التسريب المستقبلي  
         const closedData = data.slice(0, -1);  
-          
-        // إعادة تهيئة الحالة والبدء من الصفر  
         this.resetState();  
-  
         const atrArr = calculateATR(closedData);  
   
-        // تنفيذ الـ Replay شمعة بشمعة عبر التاريخ المتاح  
         for (let i = 20; i < closedData.length; i++) {  
-            const currentSubData = closedData.slice(0, i + 1);  
-            const lastBar = currentSubData[currentSubData.length - 1];  
-            const currentIndex = currentSubData.length - 1;  
-            const atr = atrArr[currentIndex] || 1.0;  
+            const subData = closedData.slice(0, i + 1);  
+            const lastBar = subData[subData.length - 1];  
+            const atr = atrArr[i];  
   
-            // 1. تحديث الهيكل المؤكد بناءً على الشماريخ السابقة فقط  
-            this.updateStructure(currentSubData, currentIndex);  
-  
-            // 2. معالجة دورة الحياة والحدث الواحد لكل شمعة (One-Event-Per-Bar)  
-            this.processBarEvent(currentSubData, currentIndex, lastBar, atr);  
+            this.updateStructure(subData, i);  
+            this.evaluateBar(subData, i, lastBar, atr);  
         }  
   
         const lastBar = closedData[closedData.length - 1];  
-        const atr = atrArr[atrArr.length - 1] || 1.0;  
+        const atr = atrArr[atrArr.length - 1];  
         return this.buildResult(lastBar, atr);  
     }  
   
-    updateStructure(subData, currentIndex) {  
-        const window = 3;  
-        if (currentIndex < window * 2) return;  
-          
-        const i = currentIndex - window; // فحص الشمعة المؤكدة تماماً خلف الـ window  
-        const highs = subData.map(d => d.high), lows = subData.map(d => d.low);  
-          
-        let isH = true, isL = true;  
-        for (let j = i - window; j <= i + window; j++) {  
-            if (highs[j] > highs[i]) isH = false;  
-            if (lows[j] < lows[i]) isL = false;  
-        }  
-          
-        if (isH) this.swings.push({ type: 'HIGH', index: i, price: highs[i], time: subData[i].time });  
-        if (isL) this.swings.push({ type: 'LOW', index: i, price: lows[i], time: subData[i].time });  
+    // 9. Separate Live Engine (Single-tick Processing)  
+    processLiveTick(subData, currentIndex) {  
+        const lastBar = subData[subData.length - 1];  
+        const atrArr = calculateATR(subData);  
+        const atr = atrArr[atrArr.length - 1];  
   
-        const recentHighs = this.swings.filter(s => s.type === 'HIGH');  
-        const recentLows = this.swings.filter(s => s.type === 'LOW');  
-  
-        this.protectedHigh = recentHighs.length > 0 ? recentHighs[recentHighs.length - 1] : { price: Math.max(...highs), index: currentIndex };  
-        this.protectedLow = recentLows.length > 0 ? recentLows[recentLows.length - 1] : { price: Math.min(...lows), index: currentIndex };  
+        this.updateStructure(subData, currentIndex);  
+        this.evaluateBar(subData, currentIndex, lastBar, atr);  
+        return this.buildResult(lastBar, atr);  
     }  
   
-    processBarEvent(subData, currentIndex, lastBar, atr) {  
-        const recentHighs = this.swings.filter(s => s.type === 'HIGH');  
-        const recentLows = this.swings.filter(s => s.type === 'LOW');  
-  
-        // إدارة الصفقات النشطة ودورة الحياة النهائية  
-        if (this.events.activeTrade) {  
-            const tr = this.events.activeTrade;  
-            if (tr.direction === 'BUY') {  
-                if (lastBar.low <= tr.sl) {  
-                    this.lifecycle = 'INVALIDATED';  
-                    tr.status = 'SL Hit';  
-                } else if (lastBar.high >= tr.tp2) {  
-                    this.lifecycle = 'CLOSED';  
-                    tr.status = 'TP2 Hit';  
-                } else if (lastBar.high >= tr.tp1 && tr.status !== 'TP1 Hit') {  
-                    this.lifecycle = 'TP1';  
-                    tr.status = 'TP1 Hit';  
-                }  
-            } else if (tr.direction === 'SELL') {  
-                if (lastBar.high >= tr.sl) {  
-                    this.lifecycle = 'INVALIDATED';  
-                    tr.status = 'SL Hit';  
-                } else if (lastBar.low <= tr.tp2) {  
-                    this.lifecycle = 'CLOSED';  
-                    tr.status = 'TP2 Hit';  
-                } else if (lastBar.low <= tr.tp1 && tr.status !== 'TP1 Hit') {  
-                    this.lifecycle = 'TP1';  
-                    tr.status = 'TP1 Hit';  
-                }  
-            }  
-            if (this.lifecycle === 'INVALIDATED' || this.lifecycle === 'CLOSED') return;  
-        }  
-  
-        // انتهاء صلاحية الـ Sweep عبر الـ TTL  
-        if (this.events.sweep && (currentIndex - this.events.sweep.index > this.events.sweep.ttl)) {  
-            this.resetState();  
+    evaluateBar(subData, barIndex, bar, atr) {  
+        if (this.state === 'ACTIVE' || this.state === 'TP1') {  
+            this.manageTrade(bar);  
             return;  
         }  
   
-        // أ. رصد الـ Sweep في مرحلة الـ SETUP  
-        if (this.lifecycle === 'SETUP' && !this.events.sweep && recentHighs.length > 0 && recentLows.length > 0) {  
-            const lastH = recentHighs[recentHighs.length - 1];  
-            const lastL = recentLows[recentLows.length - 1];  
+        if (this.state === 'CLOSED' || this.state === 'INVALIDATED') return;  
   
-            if (lastBar.high >= lastH.price && lastBar.close < lastH.price) {  
-                this.events.sweep = { type: 'BUY_SIDE_SWEEP', price: lastH.price, index: currentIndex, time: lastBar.time, ttl: 25 };  
-            } else if (lastBar.low <= lastL.price && lastBar.close > lastL.price) {  
-                this.events.sweep = { type: 'SELL_SIDE_SWEEP', price: lastL.price, index: currentIndex, time: lastBar.time, ttl: 25 };  
-            }  
+        // TTL / Expiration Check  
+        if (this.chain.sweepEvent && (barIndex - this.chain.sweepEvent.barIndex > 40)) {  
+            this.pushEvent('CHAIN_EXPIRED', barIndex, { reason: 'TTL_EXCEEDED' }, this.chain.sweepEvent.id);  
+            this.resetChain();  
             return;  
         }  
   
-        // ب. رصد الـ MSS حصرياً بعد الـ Sweep  
-        if (this.events.sweep && !this.events.mss && currentIndex > this.events.sweep.index) {  
-            if (this.events.sweep.type === 'SELL_SIDE_SWEEP' && recentHighs.length > 0) {  
-                const refHigh = recentHighs[recentHighs.length - 1].price;  
-                if (lastBar.close > refHigh) {  
-                    this.events.mss = { direction: 'BULLISH_MSS', index: currentIndex };  
-                }  
-            } else if (this.events.sweep.type === 'BUY_SIDE_SWEEP' && recentLows.length > 0) {  
-                const refLow = recentLows[recentLows.length - 1].price;  
-                if (lastBar.close < refLow) {  
-                    this.events.mss = { direction: 'BEARISH_MSS', index: currentIndex };  
-                }  
+        switch (this.state) {  
+            case 'SETUP':  
+                this.handleSetup(subData, barIndex, bar, atr);  
+                break;  
+            case 'ARMED':  
+                this.handleArmed(barIndex, bar);  
+                break;  
+            case 'RETEST':  
+                this.handleRetest(barIndex, bar);  
+                break;  
+            case 'CONFIRMED':  
+                this.handleConfirmed(barIndex, bar, atr);  
+                break;  
+        }  
+    }  
+  
+    handleSetup(subData, barIndex, bar, atr) {  
+        if (!this.protectedHigh || !this.protectedLow) return;  
+  
+        // Step 1: LIQUIDITY SWEEP  
+        if (!this.chain.sweepEvent) {  
+            if (bar.high >= this.protectedHigh.price && bar.close < this.protectedHigh.price) {  
+                this.chain.sweepEvent = this.pushEvent('LIQUIDITY_SWEEP', barIndex, {  
+                    direction: 'BEARISH_SWEEP',  
+                    sweptPrice: this.protectedHigh.price  
+                });  
+            } else if (bar.low <= this.protectedLow.price && bar.close > this.protectedLow.price) {  
+                this.chain.sweepEvent = this.pushEvent('LIQUIDITY_SWEEP', barIndex, {  
+                    direction: 'BULLISH_SWEEP',  
+                    sweptPrice: this.protectedLow.price  
+                });  
             }  
             return;  
         }  
+  // Step 2 & 3: Replace current MSS with Internal MSS (3)  
+        if (this.chain.sweepEvent && !this.chain.internalMssEvent) {  
+            const sweepDir = this.chain.sweepEvent.payload.direction;  
+            const validIntSwings = this.internalSwings.filter(s => s.confirmedAtIndex <= barIndex);  
   
-        // ج. رصد الـ Displacement وتوليد OB / FVG الصادرين حصرياً منه  
-        if (this.events.mss && !this.events.disp && currentIndex >= this.events.mss.index) {  
-            const bodySize = Math.abs(lastBar.close - lastBar.open);  
-            if (bodySize >= (1.3 * atr)) {  
-                this.events.disp = { index: currentIndex, size: bodySize };  
-                  // استخراج الـ OB  
-                for (let i = currentIndex - 2; i <= currentIndex; i++) {  
-                    if (i < 1) continue;  
-                    const c = subData[i];  
-                    const nextC = subData[i+1] || lastBar;  
-                      
-                    if (this.events.mss.direction === 'BULLISH_MSS' && c.close < c.open && nextC.close > nextC.open) {  
-                        this.events.ob = { type: 'Bullish_OB', top: c.high, bottom: c.low, realTop: Math.max(c.open, c.close), index: i };  
-                        break;  
-                    } else if (this.events.mss.direction === 'BEARISH_MSS' && c.close > c.open && nextC.close < nextC.open) {  
-                        this.events.ob = { type: 'Bearish_OB', top: c.high, bottom: c.low, realBottom: Math.min(c.open, c.close), index: i };  
-                        break;  
+            if (sweepDir === 'BULLISH_SWEEP') {  
+                const intHighs = validIntSwings.filter(s => s.type === 'HIGH' && s.index > this.chain.sweepEvent.barIndex);  
+                if (intHighs.length > 0) {  
+                    const lastIntHigh = intHighs[intHighs.length - 1];  
+                    if (bar.close > lastIntHigh.price) {  
+                        this.chain.internalMssEvent = this.pushEvent('INTERNAL_MSS', barIndex, {  
+                            direction: 'BULLISH_INTERNAL_MSS',  
+                            brokenPrice: lastIntHigh.price  
+                        }, this.chain.sweepEvent.id);  
                     }  
                 }  
-  
-                // استخراج الـ FVG  
-                const barPrev2 = subData[currentIndex - 2];  
-                if (barPrev2) {  
-                    if (this.events.mss.direction === 'BULLISH_MSS' && lastBar.low > barPrev2.high) {  
-                        this.events.fvg = { type: 'Bullish_FVG', top: lastBar.low, bottom: barPrev2.high, ce: (lastBar.low + barPrev2.high)/2, index: currentIndex };  
-                    } else if (this.events.mss.direction === 'BEARISH_MSS' && lastBar.high < barPrev2.low) {  
-                        this.events.fvg = { type: 'Bearish_FVG', top: barPrev2.low, bottom: lastBar.high, ce: (barPrev2.low + lastBar.high)/2, index: currentIndex };  
+            } else if (sweepDir === 'BEARISH_SWEEP') {  
+                const intLows = validIntSwings.filter(s => s.type === 'LOW' && s.index > this.chain.sweepEvent.barIndex);  
+                if (intLows.length > 0) {  
+                    const lastIntLow = intLows[intLows.length - 1];  
+                    if (bar.close < lastIntLow.price) {  
+                        this.chain.internalMssEvent = this.pushEvent('INTERNAL_MSS', barIndex, {  
+                            direction: 'BEARISH_INTERNAL_MSS',  
+                            brokenPrice: lastIntLow.price  
+                        }, this.chain.sweepEvent.id);  
                     }  
-                }  
-  
-                if (this.events.ob || this.events.fvg) {  
-                    this.lifecycle = 'ARMED';  
                 }  
             }  
             return;  
         }  
   
-        // د. Retest + Trigger للتنفيذ الفعلي  
-        if (this.lifecycle === 'ARMED' && this.events.ob) {  
-            const ob = this.events.ob;  
-            const isBullish = this.events.mss.direction === 'BULLISH_MSS';  
-            const touching = isBullish ? (lastBar.low <= ob.top && lastBar.low >= ob.bottom) : (lastBar.high >= ob.bottom && lastBar.high <= ob.top);  
+        // Step 4: Make Displacement causally dependent on Internal MSS  
+        if (this.chain.internalMssEvent && !this.chain.displacementEvent) {  
+            const bodySize = Math.abs(bar.close - bar.open);  
+            if (bodySize >= 1.2 * atr) {  
+                this.chain.displacementEvent = this.pushEvent('DISPLACEMENT', barIndex, {  
+                    size: bodySize,  
+                    ratioToATR: (bodySize / atr).toFixed(2)  
+                }, this.chain.internalMssEvent.id);  
   
-            if (touching) {  
-                this.events.retest = true;  
-                this.lifecycle = 'RETEST';  
+                // Step 5: Make OB/FVG causally dependent on Displacement  
+                this.extractCausalZones(subData, barIndex, bar);  
   
-                const isConfirmation = isBullish ? (lastBar.close > lastBar.open && lastBar.close > subData[currentIndex - 1].high) : (lastBar.close < lastBar.open && lastBar.close < subData[currentIndex - 1].low);  
-  
-                if (isConfirmation) {  
-                    this.events.trigger = true;  
-                    this.lifecycle = 'CONFIRMED';  
-                    this.lifecycle = 'ENTRY';  
-  
-                    const direction = isBullish ? 'BUY' : 'SELL';  
-                    const sl = isBullish ? (this.protectedLow.price - (0.2 * atr)) : (this.protectedHigh.price + (0.2 * atr));  
-                    const risk = isBullish ? (lastBar.close - sl) : (sl - lastBar.close);  
-                    const tp1 = isBullish ? (lastBar.close + (2.0 * risk)) : (lastBar.close - (2.0 * risk));  
-                    const tp2 = isBullish ? (lastBar.close + (3.5 * risk)) : (lastBar.close - (3.5 * risk));  
-  
-                    this.events.activeTrade = { direction, entry: lastBar.close, sl, tp1, tp2, status: 'Active' };  
-                    this.lifecycle = 'ACTIVE';  
+                if (this.chain.causalZoneEvent) {  
+                    this.transitionTo('ARMED', barIndex, 'CAUSAL_CHAIN_VALIDATED', this.chain.causalZoneEvent.id);  
                 }  
             }  
         }  
+    }  
+  
+    // Step 5: OB/FVG extraction strictly linked to Displacement  
+    extractCausalZones(subData, barIndex, bar) {  
+        const mssDir = this.chain.internalMssEvent.payload.direction;  
+        const dispId = this.chain.displacementEvent.id;  
+          
+        let foundOb = null;  
+        let foundFvg = null;  
+  
+        // Order Block  
+        for (let i = barIndex - 1; i >= Math.max(0, barIndex - 4); i--) {  
+            const c = subData[i];  
+            if (mssDir === 'BULLISH_INTERNAL_MSS' && c.close < c.open) {  
+                foundOb = { type: 'Bullish_OB', top: c.high, bottom: c.low, index: i };  
+                break;  
+            } else if (mssDir === 'BEARISH_INTERNAL_MSS' && c.close > c.open) {  
+                foundOb = { type: 'Bearish_OB', top: c.high, bottom: c.low, index: i };  
+                break;  
+            }  
+        }  
+  
+        // Fair Value Gap  
+        const prev2 = subData[barIndex - 2];  
+        if (prev2) {  
+            if (mssDir === 'BULLISH_INTERNAL_MSS' && bar.low > prev2.high) {  
+                foundFvg = { type: 'Bullish_FVG', top: bar.low, bottom: prev2.high, ce: (bar.low + prev2.high) / 2, index: barIndex };  
+            } else if (mssDir === 'BEARISH_INTERNAL_MSS' && bar.high < prev2.low) {  
+                foundFvg = { type: 'Bearish_FVG', top: prev2.low, bottom: bar.high, ce: (prev2.low + bar.high) / 2, index: barIndex };  
+            }  
+        }  
+  
+        if (foundOb || foundFvg) {  
+            this.chain.causalZoneEvent = this.pushEvent('CAUSAL_ZONE_ESTABLISHED', barIndex, {  
+                ob: foundOb,  
+                fvg: foundFvg,  
+                zoneTop: foundOb ? foundOb.top : foundFvg.top,  
+                zoneBottom: foundOb ? foundOb.bottom : foundFvg.bottom  
+            }, dispId);  
+        }  
+    }  
+  
+    handleArmed(barIndex, bar) {  
+        const zone = this.chain.causalZoneEvent.payload;  
+        const mssDir = this.chain.internalMssEvent.payload.direction;  
+        const isBull = mssDir === 'BULLISH_INTERNAL_MSS';  
+  
+        // 8. Make Retest support OB/FVG zones (إعادة اختبار المساحة الكاملة للـ Zone)  
+        let inZone = false;  
+        if (isBull) {  
+            inZone = (bar.low <= zone.zoneTop && bar.low >= zone.zoneBottom - (zone.zoneTop - zone.zoneBottom) * 0.1);  
+        } else {  
+            inZone = (bar.high >= zone.zoneBottom && bar.high <= zone.zoneTop + (zone.zoneTop - zone.zoneBottom) * 0.1);  
+        }  
+  
+        if (inZone) {  
+            this.chain.retestEvent = this.pushEvent('CAUSAL_ZONE_RETEST', barIndex, {  
+                touchPrice: bar.close,  
+                zoneType: zone.ob ? 'OB' : 'FVG'  
+            }, this.chain.causalZoneEvent.id);  
+  
+            this.transitionTo('RETEST', barIndex, 'ZONE_RETESTED', this.chain.retestEvent.id);  
+        }  
+    }  
+  
+    handleRetest(barIndex, bar) {  
+        const mssDir = this.chain.internalMssEvent.payload.direction;  
+        const isBull = mssDir === 'BULLISH_INTERNAL_MSS';  
+  
+        // 6. Add CONFIRMED state (شرط إغلاق انعكاسي للـ Confirmation)  
+        const confirmed = isBull ? (bar.close > bar.open) : (bar.close < bar.open);  
+  
+        if (confirmed) {  
+            this.chain.confirmEvent = this.pushEvent('SETUP_CONFIRMED', barIndex, {  
+                confirmPrice: bar.close  
+            }, this.chain.retestEvent.id);  
+  
+            this.transitionTo('CONFIRMED', barIndex, 'TRIGGER_CONFIRMED', this.chain.confirmEvent.id);  
+        }  
+    }  
+  
+    // 6. Add CONFIRMED state (التنفيذ الصريح بعد الـ Confirmation)  
+    handleConfirmed(barIndex, bar, atr) {  
+        const mssDir = this.chain.internalMssEvent.payload.direction;  
+        const isBull = mssDir === 'BULLISH_INTERNAL_MSS';  
+        const direction = isBull ? 'BUY' : 'SELL';  
+          
+        const sl = isBull ? (this.protectedLow.price - (0.1 * atr)) : (this.protectedHigh.price + (0.1 * atr));  
+        const risk = Math.abs(bar.close - sl);  
+        const tp1 = isBull ? (bar.close + (2.0 * risk)) : (bar.close - (2.0 * risk));  
+        const tp2 = isBull ? (bar.close + (3.5 * risk)) : (bar.close - (3.5 * risk));  
+  
+        this.activeTrade = { direction, entry: bar.close, sl, tp1, tp2, status: 'Active' };  
+          
+        this.pushEvent('TRADE_EXECUTED', barIndex, this.activeTrade, this.chain.confirmEvent.id);  
+        this.transitionTo('ACTIVE', barIndex, 'TRADE_ENTERED', this.chain.confirmEvent.id);  
+    }  
+    manageTrade(bar) {  
+        const tr = this.activeTrade;  
+        if (tr.direction === 'BUY') {  
+            if (bar.low <= tr.sl) {  
+                tr.status = 'SL Hit';  
+                this.transitionTo('INVALIDATED', bar.index, 'STOP_LOSS_HIT', null);  
+            } else if (bar.high >= tr.tp2) {  
+                tr.status = 'TP2 Hit';  
+                this.transitionTo('CLOSED', bar.index, 'TAKE_PROFIT_2_HIT', null);  
+            } else if (bar.high >= tr.tp1 && this.state !== 'TP1') {  
+                tr.status = 'TP1 Hit';  
+                this.transitionTo('TP1', bar.index, 'TAKE_PROFIT_1_HIT', null);  
+            }  
+        } else {  
+            if (bar.high >= tr.sl) {  
+                tr.status = 'SL Hit';  
+                this.transitionTo('INVALIDATED', bar.index, 'STOP_LOSS_HIT', null);  
+            } else if (bar.low <= tr.tp2) {  
+                tr.status = 'TP2 Hit';  
+                this.transitionTo('CLOSED', bar.index, 'TAKE_PROFIT_2_HIT', null);  
+            } else if (bar.low <= tr.tp1 && this.state !== 'TP1') {  
+                tr.status = 'TP1 Hit';  
+                this.transitionTo('TP1', bar.index, 'TAKE_PROFIT_1_HIT', null);  
+            }  
+        }  
+    }  
+  
+    resetChain() {  
+        this.chain = {  
+            sweepEvent: null,  
+            internalMssEvent: null,  
+            displacementEvent: null,  
+            causalZoneEvent: null,  
+            retestEvent: null,  
+            confirmEvent: null  
+        };  
+        this.state = 'SETUP';  
     }  
   
     buildResult(lastBar, atr) {  
-        let direction = "NEUTRAL";  
-        let decision = "المحاكاة التسلسلية جارية (بانتظار اكتمال الشروط)";  
-        let sl = null, tp1 = null, tp2 = null;  
-  
-        if (this.events.activeTrade) {  
-            direction = this.events.activeTrade.direction;  
-            sl = this.events.activeTrade.sl;  
-            tp1 = this.events.activeTrade.tp1;  
-            tp2 = this.events.activeTrade.tp2;  
-            decision = `صفقة مؤسسية نشطة (${direction}) - دورة الحياة: ${this.lifecycle}`;  
-        }  
-  
-        let score = 10;  
-        if (this.events.sweep) score = 30;  
-        if (this.events.mss) score = 50;  
-        if (this.events.disp) score = 70;  
-        if (this.lifecycle === 'ARMED' || this.lifecycle === 'RETEST') score = 85;  
-        if (this.lifecycle === 'CONFIRMED' || this.lifecycle === 'ACTIVE') score = 100;  
-  
         return {  
             price: lastBar.close,  
-            lifecycle: this.lifecycle,  
+            lifecycle: this.state,  
             dealingRange: `${this.protectedLow ? this.protectedLow.price.toFixed(1) : '--'} - ${this.protectedHigh ? this.protectedHigh.price.toFixed(1) : '--'}`,  
             protectedHigh: this.protectedHigh ? this.protectedHigh.price : 0,  
             protectedLow: this.protectedLow ? this.protectedLow.price : 0,  
-            score,  
-            direction,  
-            decision,  
-            sweepInfo: this.events.sweep ? `${this.events.sweep.type} (TTL: ${this.events.sweep.ttl})` : "None",  
-            mssInfo: this.events.mss ? this.events.mss.direction : "None",  
-            dispInfo: this.events.disp ? "Validated" : "Waiting",  
-            causalZone: this.events.ob ? `${this.events.ob.type}` : "None",  
-            triggerInfo: this.events.trigger ? "Confirmed Trigger" : (this.events.retest ? "Retested (Awaiting Trigger)" : "Waiting"),  
-            suggestedSL: sl ? +sl.toFixed(2) : null,  
-            suggestedTP1: tp1 ? +tp1.toFixed(2) : null,  
-            suggestedTP2: tp2 ? +tp2.toFixed(2) : null,  
-            obObj: this.events.ob,  
-            fvgObj: this.events.fvg  
+            direction: this.activeTrade ? this.activeTrade.direction : "NEUTRAL",  
+            decision: this.activeTrade ? `صفقة نشطة (${this.activeTrade.direction})` : `حالة النظام: ${this.state}`,  
+            sweepInfo: this.chain.sweepEvent ? `${this.chain.sweepEvent.payload.direction}` : "None",  
+            mssInfo: this.chain.internalMssEvent ? `${this.chain.internalMssEvent.payload.direction}` : "None",  
+            causalZone: this.chain.causalZoneEvent ? `Zone: [${this.chain.causalZoneEvent.payload.zoneBottom.toFixed(1)} - ${this.chain.causalZoneEvent.payload.zoneTop.toFixed(1)}]` : "None",  
+            triggerInfo: this.state,  
+            suggestedSL: this.activeTrade ? +this.activeTrade.sl.toFixed(2) : null,  
+            suggestedTP1: this.activeTrade ? +this.activeTrade.tp1.toFixed(2) : null,  
+            suggestedTP2: this.activeTrade ? +this.activeTrade.tp2.toFixed(2) : null,  
+            causalZoneObj: this.chain.causalZoneEvent ? this.chain.causalZoneEvent.payload : null,  
+            eventLedgerCount: this.eventLedger.length  
         };  
     }  
 }  
   
-global.SequentialReplaySMCEngine = SequentialReplaySMCEngine;  
+global.StrictCausalSMCEngine = StrictCausalSMCEngine;  
 })(window);  
   
-  /* ==========================================================================  
+/* ==========================================================================  
    [ربط الواجهة والرسوم البيانية]  
    ========================================================================== */  
 let chart, candleSeries;  
 let currentTF = '1m';  
 let showOB = true;  
-let showFVG = true;  
 let historicalData = [];  
-let engineInstance = new window.SequentialReplaySMCEngine();  
+let engineInstance = new window.StrictCausalSMCEngine();  
 let lastResult = null;  
   
 function initChart() {  
@@ -560,12 +686,6 @@ function toggleOB() {
     renderMarkers();  
 }  
   
-function toggleFVG() {  
-    showFVG = !showFVG;  
-    document.getElementById('fvgToggle').classList.toggle('active', showFVG);  
-    renderMarkers();  
-}  
-  
 async function fetchBybitData() {  
     try {  
         let interval = '1';  
@@ -586,7 +706,6 @@ async function fetchBybitData() {
             }));  
         }  
           
-        // تشغيل المحاكاة التسلسلية التاريخية بالكامل  
         lastResult = engineInstance.replay(historicalData);  
         if (lastResult) updateUI(lastResult);  
           
@@ -601,28 +720,17 @@ function renderMarkers() {
     if (!lastResult) return;  
     let markers = [];  
   
-    if (showOB && lastResult.obObj) {  
-        const bar = historicalData[lastResult.obObj.index];  
-        if (bar) {  
-            markers.push({  
-                time: bar.time,  
-                position: lastResult.obObj.type.includes('Bullish') ? 'belowBar' : 'aboveBar',  
-                color: '#34d399',  
-                shape: 'square',  
-                text: `Replay ${lastResult.obObj.type}`  
-            });  
-        }  
-    }  
-  
-    if (showFVG && lastResult.fvgObj) {  
-        const bar = historicalData[lastResult.fvgObj.index];  
+    if (showOB && lastResult.causalZoneObj) {  
+        const zone = lastResult.causalZoneObj;  
+        const targetIdx = zone.ob ? zone.ob.index : zone.fvg.index;  
+        const bar = historicalData[targetIdx];  
         if (bar) {  
             markers.push({  
                 time: bar.time,  
                 position: 'aboveBar',  
                 color: '#38bdf8',  
-                shape: 'circle',  
-                text: `Replay FVG CE: ${lastResult.fvgObj.ce.toFixed(1)}`  
+                shape: 'square',  
+                text: `Causal Zone (${zone.ob ? 'OB' : 'FVG'})`  
             });  
         }  
     }  
@@ -634,27 +742,26 @@ function updateUI(res) {
     document.getElementById("price").innerText = res.price.toFixed(2);  
     document.getElementById("dealingRangeVal").innerText = res.dealingRange;  
     document.getElementById("tradeLifecycleVal").innerText = res.lifecycle;  
-    document.getElementById("stateBadge").innerText = `حالة دورتـ الحياة: ${res.lifecycle}`;  
+    document.getElementById("stateBadge").innerText = `حالة النظام: ${res.lifecycle}`;  
       
-    const lifecycleSteps = ['SETUP', 'ARMED', 'RETEST', 'CONFIRMED', 'ENTRY', 'ACTIVE', 'TP1', 'TP2', 'CLOSED', 'INVALIDATED'];  
+    const lifecycleSteps = ['SETUP', 'ARMED', 'RETEST', 'CONFIRMED', 'ACTIVE', 'TP1', 'CLOSED', 'INVALIDATED'];  
     lifecycleSteps.forEach((stepName, idx) => {  
         const el = document.getElementById(`life-${idx + 1}`);  
         if (el) {  
             el.className = "life-step";  
             if (res.lifecycle === stepName) {  
-                if (stepName === 'INVALIDATED' || stepName === 'CLOSED') el.classList.add('invalid');  
+                if (res.lifecycle === 'INVALIDATED' || res.lifecycle === 'CLOSED') el.classList.add('invalid');  
                 else el.classList.add('active');  
             } else if (lifecycleSteps.indexOf(res.lifecycle) > idx) {  
                 el.classList.add('done');  
             }  
         }  
     });  
-  
-    const tag = document.getElementById("signalTag");  
+  const tag = document.getElementById("signalTag");  
     const power = document.getElementById("signalPower");  
       
     tag.innerText = res.decision;  
-    power.innerText = `${res.score}%`;  
+    power.innerText = `${res.eventLedgerCount} Links`;  
       
     if (res.direction === "BUY") {  
         tag.className = "signal-tag signal-strong";  
@@ -676,12 +783,12 @@ function updateUI(res) {
     document.getElementById("mssState").innerText = res.mssInfo;  
     document.getElementById("causalZone").innerText = res.causalZone;  
     document.getElementById("triggerState").innerText = res.triggerInfo;  
-    document.getElementById("lifecycleStateVal").innerText = res.lifecycle;  
+    document.getElementById("ledgerVal").innerText = `${res.eventLedgerCount} Events`;  
 }  
   
 initChart();  
 fetchBybitData();  
 setInterval(fetchBybitData, 5000);  
-</script>
+</script> 
 </body>  
 </html>
