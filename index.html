@@ -211,6 +211,10 @@ border: 1px solid #1e293b;
         <div class="filter-label">CHAINED EVENT LEDGER</div>  
         <div id="ledgerVal" class="filter-value" style="color: #34d399;">0 Chain Links</div>  
     </div>  
+    <div class="filter-card">  
+        <div class="filter-label">TRADE HISTORY (LIVE)</div>  
+        <div id="tradeStatsVal" class="filter-value" style="color: #f8fafc;">0</div>  
+    </div>  
 </div>  <div class="chart-card">  
     <div class="chart-toolbar">  
         <div class="tf-group">  
@@ -274,6 +278,7 @@ class StrictCausalSMCEngine {
         this.protectedHigh = null;  
         this.protectedLow = null;  
         this.activeTrade = null;  
+        this.tradeHistory = []; // 11. Persistent record of completed trades (لا يُمسح إلا عند Full Reset)  
           
         // Causal Chain State  
         this.chain = {  
@@ -366,6 +371,9 @@ class StrictCausalSMCEngine {
   
             this.updateStructure(subData, i);  
             this.evaluateBar(subData, i, lastBar, atr);  
+            // evaluateBar/manageTrade already call finalizeTrade() internally when a  
+            // trade closes, so the loop naturally continues scanning for the NEXT setup  
+            // instead of stopping dead at the first trade found in the window.  
         }  
   
         const lastBar = closedData[closedData.length - 1];  
@@ -384,12 +392,31 @@ class StrictCausalSMCEngine {
         return this.buildResult(lastBar, atr);  
     }  
   
+    // 11. النبضة الحية الحقيقية: بين إغلاق شمعة وأخرى نراقب السعر اللحظي فقط  
+    // (تحديث السعر + فحص SL/TP لحظياً) دون التلاعب بالبنية السببية (Structure/Chain)  
+    // التي يجب أن تبقى صارمة ومبنية على الشموع المُغلقة فقط (No Look-ahead).  
+    liveUpdate(formingBar, barIndex) {  
+        if (this.state === 'ACTIVE' || this.state === 'TP1') {  
+            this.manageTrade(formingBar, barIndex);  
+            if (this.state === 'CLOSED' || this.state === 'INVALIDATED') {  
+                this.finalizeTrade(barIndex);  
+            }  
+        }  
+        return this.buildResult(formingBar);  
+    }  
+  
     evaluateBar(subData, barIndex, bar, atr) {  
         if (this.state === 'ACTIVE' || this.state === 'TP1') {  
-            this.manageTrade(bar);  
+            this.manageTrade(bar, barIndex);  
+            // 11. Real & Live fix: بمجرد إغلاق الصفقة (SL/TP2) يجب أن يستأنف المحرك  
+            // البحث عن فرصة جديدة بدلاً من التجمد للأبد في CLOSED/INVALIDATED.  
+            if (this.state === 'CLOSED' || this.state === 'INVALIDATED') {  
+                this.finalizeTrade(barIndex);  
+            }  
             return;  
         }  
   
+        // Chain لا يجب أن يبقى معلقاً هنا الآن (finalizeTrade يعيده لـ SETUP فوراً)  
         if (this.state === 'CLOSED' || this.state === 'INVALIDATED') return;  
   
         // TTL / Expiration Check  
@@ -578,31 +605,47 @@ class StrictCausalSMCEngine {
         this.pushEvent('TRADE_EXECUTED', barIndex, this.activeTrade, this.chain.confirmEvent.id);  
         this.transitionTo('ACTIVE', barIndex, 'TRADE_ENTERED', this.chain.confirmEvent.id);  
     }  
-    manageTrade(bar) {  
+    // 7. إصلاح جذري: bar.index لم يكن موجوداً على شمعة السوق (فقط time/open/high/low/close/volume)  
+    // مما كان يسجل كل حدث SL/TP بمؤشر undefined. الآن نستقبل barIndex الحقيقي من المُستدعي.  
+    manageTrade(bar, barIndex) {  
         const tr = this.activeTrade;  
         if (tr.direction === 'BUY') {  
             if (bar.low <= tr.sl) {  
                 tr.status = 'SL Hit';  
-                this.transitionTo('INVALIDATED', bar.index, 'STOP_LOSS_HIT', null);  
+                this.transitionTo('INVALIDATED', barIndex, 'STOP_LOSS_HIT', null);  
             } else if (bar.high >= tr.tp2) {  
                 tr.status = 'TP2 Hit';  
-                this.transitionTo('CLOSED', bar.index, 'TAKE_PROFIT_2_HIT', null);  
+                this.transitionTo('CLOSED', barIndex, 'TAKE_PROFIT_2_HIT', null);  
             } else if (bar.high >= tr.tp1 && this.state !== 'TP1') {  
                 tr.status = 'TP1 Hit';  
-                this.transitionTo('TP1', bar.index, 'TAKE_PROFIT_1_HIT', null);  
+                this.transitionTo('TP1', barIndex, 'TAKE_PROFIT_1_HIT', null);  
             }  
         } else {  
             if (bar.high >= tr.sl) {  
                 tr.status = 'SL Hit';  
-                this.transitionTo('INVALIDATED', bar.index, 'STOP_LOSS_HIT', null);  
+                this.transitionTo('INVALIDATED', barIndex, 'STOP_LOSS_HIT', null);  
             } else if (bar.low <= tr.tp2) {  
                 tr.status = 'TP2 Hit';  
-                this.transitionTo('CLOSED', bar.index, 'TAKE_PROFIT_2_HIT', null);  
+                this.transitionTo('CLOSED', barIndex, 'TAKE_PROFIT_2_HIT', null);  
             } else if (bar.low <= tr.tp1 && this.state !== 'TP1') {  
                 tr.status = 'TP1 Hit';  
-                this.transitionTo('TP1', bar.index, 'TAKE_PROFIT_1_HIT', null);  
+                this.transitionTo('TP1', barIndex, 'TAKE_PROFIT_1_HIT', null);  
             }  
         }  
+    }  
+  
+    // 11. تسجيل الصفقة المُغلقة في السجل (لا تُمسح عبر resetChain) ثم إعادة تهيئة  
+    // السلسلة السببية فقط (وليس كامل حالة المحرك) لاستئناف البحث عن فرصة جديدة فوراً.  
+    finalizeTrade(barIndex) {  
+        if (this.activeTrade) {  
+            this.tradeHistory.push({  
+                ...this.activeTrade,  
+                closedBarIndex: barIndex,  
+                result: this.state  
+            });  
+            this.activeTrade = null;  
+        }  
+        this.resetChain();  
     }  
   
     resetChain() {  
@@ -628,20 +671,8 @@ class StrictCausalSMCEngine {
             decision: this.activeTrade ? `صفقة نشطة (${this.activeTrade.direction})` : `حالة النظام: ${this.state}`,  
             sweepInfo: this.chain.sweepEvent ? `${this.chain.sweepEvent.payload.direction}` : "None",  
             mssInfo: this.chain.internalMssEvent ? `${this.chain.internalMssEvent.payload.direction}` : "None",  
-            causalZone: this.chain.causalZoneEvent ? `Zone: [${this.chain.causalZoneEvent.payload.zoneBottom.toFixed(1)} - ${this.chain.causalZoneEvent.payload.zoneTop.toFixed(1)}]` : "None",  
-            triggerInfo: this.state,  
-            suggestedSL: this.activeTrade ? +this.activeTrade.sl.toFixed(2) : null,  
-            suggestedTP1: this.activeTrade ? +this.activeTrade.tp1.toFixed(2) : null,  
-            suggestedTP2: this.activeTrade ? +this.activeTrade.tp2.toFixed(2) : null,  
-            causalZoneObj: this.chain.causalZoneEvent ? this.chain.causalZoneEvent.payload : null,  
-            eventLedgerCount: this.eventLedger.length  
-        };  
-    }  
-}  
-  
-global.StrictCausalSMCEngine = StrictCausalSMCEngine;  
-})(window);  
-  
+            causalZone: this.ch
+              
 /* ==========================================================================  
    [ربط الواجهة والرسوم البيانية]  
    ========================================================================== */  
@@ -651,6 +682,10 @@ let showOB = true;
 let historicalData = [];  
 let engineInstance = new window.StrictCausalSMCEngine();  
 let lastResult = null;  
+let isFetching = false;  
+let processedClosedCount = 0; // كم شمعة مُغلقة تمت معالجتها سببياً بالفعل  
+let engineInitialized = false; // هل تم تشغيل Replay كامل مرة واحدة على الأقل  
+let pollTimer = null;  
   
 function initChart() {  
     const container = document.getElementById('chart');  
@@ -677,6 +712,10 @@ function changeTimeframe(tf, event) {
     document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));  
     if (event && event.target) event.target.classList.add('active');  
     currentTF = tf;  
+    // إطار زمني مختلف = شموع مختلفة تماماً بمؤشرات مختلفة، لذا يجب محرك جديد + Replay كامل  
+    engineInstance = new window.StrictCausalSMCEngine();  
+    processedClosedCount = 0;  
+    engineInitialized = false;  
     fetchBybitData();  
 }  
   
@@ -687,6 +726,9 @@ function toggleOB() {
 }  
   
 async function fetchBybitData() {  
+    // حارس بسيط لمنع تداخل الطلبات إن تأخرت الشبكة أكثر من دورة الاستطلاع  
+    if (isFetching) return;  
+    isFetching = true;  
     try {  
         let interval = '1';  
         if (currentTF === '5m') interval = '5';  
@@ -695,7 +737,7 @@ async function fetchBybitData() {
         const res = await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=200`);  
         const json = await res.json();  
           
-        if (json && json.result && json.result.list) {  
+        if (json && json.result && json.result.list && json.result.list.length > 0) {  
             historicalData = json.result.list.reverse().map(item => ({  
                 time: parseInt(item[0]) / 1000,  
                 open: parseFloat(item[1]),  
@@ -705,14 +747,41 @@ async function fetchBybitData() {
                 volume: parseFloat(item[5])  
             }));  
         }  
-          
-        lastResult = engineInstance.replay(historicalData);  
-        if (lastResult) updateUI(lastResult);  
-          
+  
+        if (!historicalData || historicalData.length < 60) return;  
+  
+        // آخر شمعة في المصفوفة لم تُغلق بعد (شمعة حية Live) — لا يجوز أن تُستخدم في  
+        // بناء الهيكل/السلسلة السببية (Look-ahead)، لكنها المصدر الحقيقي للسعر اللحظي.  
+        const closedData = historicalData.slice(0, -1);  
+        const formingBar = historicalData[historicalData.length - 1];  
+  
+        if (!engineInitialized || closedData.length < processedClosedCount) {  
+            // أول تحميل، أو انكماش غير متوقع في البيانات: نفّذ Replay سببي كامل مرة واحدة  
+            lastResult = engineInstance.replay(historicalData);  
+            processedClosedCount = closedData.length;  
+            engineInitialized = true;  
+        } else if (closedData.length > processedClosedCount) {  
+            // شمعة/شموع جديدة أُغلقت منذ آخر استطلاع: نُقدّم المحرك خطوة سببية واحدة  
+            // لكل شمعة جديدة بالترتيب الزمني الصحيح، دون مسح أي حالة سابقة (نظام حي حقيقي)  
+            for (let i = processedClosedCount; i < closedData.length; i++) {  
+                if (i < 20) continue; // فترة الإحماء نفسها المستخدمة في Replay  
+                const subData = closedData.slice(0, i + 1);  
+                lastResult = engineInstance.processLiveTick(subData, i);  
+            }  
+            processedClosedCount = closedData.length;  
+        } else {  
+            // لا شموع جديدة مُغلقة بعد: راقب السعر والصفقة النشطة لحظياً على الشمعة الحية  
+            lastResult = engineInstance.liveUpdate(formingBar, closedData.length - 1);  
+        }  
+  
+        if (lastResult) updateUI(lastResult, formingBar);  
+  
         candleSeries.setData(historicalData);  
         renderMarkers();  
     } catch (e) {  
         console.error("Bybit Error", e);  
+    } finally {  
+        isFetching = false;  
     }  
 }  
   
@@ -738,8 +807,11 @@ function renderMarkers() {
     candleSeries.setMarkers(markers);  
 }  
   
-function updateUI(res) {  
-    document.getElementById("price").innerText = res.price.toFixed(2);  
+function updateUI(res, formingBar) {  
+    // السعر المعروض دائماً هو سعر الشمعة الحية (اللحظية) وليس آخر شمعة مُغلقة فقط،  
+    // لتبقى الواجهة حية فعلاً بين إغلاق شمعة وأخرى.  
+    const livePrice = formingBar ? formingBar.close : res.price;  
+    document.getElementById("price").innerText = livePrice.toFixed(2);  
     document.getElementById("dealingRangeVal").innerText = res.dealingRange;  
     document.getElementById("tradeLifecycleVal").innerText = res.lifecycle;  
     document.getElementById("stateBadge").innerText = `حالة النظام: ${res.lifecycle}`;  
@@ -778,17 +850,29 @@ function updateUI(res) {
     document.getElementById("tp1Val").innerText = res.suggestedTP1 ?? "--";  
     document.getElementById("tp2Val").innerText = res.suggestedTP2 ?? "--";  
   
-    document.getElementById("structState").innerText = `H: ${res.protectedHigh} | L: ${res.protectedLow}`;  
+    document.getElementById("structState").innerText = `H: ${res.protectedHigh ? res.protectedHigh.toFixed(1) : '--'} | L: ${res.protectedLow ? res.protectedLow.toFixed(1) : '--'}`;  
     document.getElementById("sweepState").innerText = res.sweepInfo;  
     document.getElementById("mssState").innerText = res.mssInfo;  
     document.getElementById("causalZone").innerText = res.causalZone;  
     document.getElementById("triggerState").innerText = res.triggerInfo;  
     document.getElementById("ledgerVal").innerText = `${res.eventLedgerCount} Events`;  
+  
+    const tradeStatsEl = document.getElementById("tradeStatsVal");  
+    if (tradeStatsEl) {  
+        if (res.lastTrade) {  
+            const won = res.lastTrade.result === 'CLOSED';  
+            tradeStatsEl.innerText = `${res.tradeHistoryCount} | Last: ${res.lastTrade.direction} (${res.lastTrade.result})`;  
+            tradeStatsEl.style.color = won ? '#34d399' : '#f87171';  
+        } else {  
+            tradeStatsEl.innerText = `${res.tradeHistoryCount}`;  
+            tradeStatsEl.style.color = '#f8fafc';  
+        }  
+    }  
 }  
   
 initChart();  
 fetchBybitData();  
-setInterval(fetchBybitData, 5000);  
+pollTimer = setInterval(fetchBybitData, 5000);  
 </script> 
 </body>  
 </html>
