@@ -208,6 +208,14 @@ border: 1px solid #1e293b;
     margin-top: 8px;
     line-height: 1.6;
 }
+#settingsPanel label {
+    display: flex; flex-direction: column; gap: 3px; color: #94a3b8;
+}
+#settingsPanel input[type="number"] {
+    background: #0a0f1c; border: 1px solid #1e293b; color: #f8fafc;
+    border-radius: 6px; padding: 5px 7px; font-size: 0.78rem; width: 100%;
+}
+#settingsPanel input[type="checkbox"] { transform: scale(1.1); }
 </style>
 
 </head>
@@ -309,7 +317,11 @@ border: 1px solid #1e293b;
         <div id="statsState" class="filter-value" style="color: #f8fafc;">--</div>
     </div>
     <div class="filter-card" style="grid-column: span 3;">
-        <div class="filter-label">SCORE BUCKETS (Confidence range → Win% / Avg R)</div>
+        <div class="filter-label">RISK-ADJUSTED (Sharpe/Sortino هي وكيل لكل صفقة، ليست Sharpe سنوي حقيقي)</div>
+        <div id="statsExtraState" class="filter-value" style="color: #f8fafc; font-size: 0.7rem;">--</div>
+    </div>
+    <div class="filter-card" style="grid-column: span 3;">
+        <div class="filter-label">SCORE BUCKETS (Win% + 95% CI — ليس Probability معايرة إن كانت العيّنة صغيرة)</div>
         <div id="bucketsState" class="filter-value" style="color: #f8fafc; font-size: 0.66rem;">--</div>
     </div>
 </div>
@@ -341,6 +353,27 @@ border: 1px solid #1e293b;
         <button class="tf-btn" onclick="runDeepBacktest()" id="deepBacktestBtn">تشغيل</button>
     </div>
     <div id="deepBacktestResult" style="margin-top:6px;">لم يتم التشغيل بعد. هذا يجلب حتى ~5000 شمعة حقيقية من Bybit (مقسّمة 70% In-Sample / 30% Out-of-Sample) ويشغّل نسخة منفصلة من المحرك عليها — نتائج فعلية محسوبة، وليست تقديرية.</div>
+</div>
+<div class="note-box" id="settingsPanel">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+        <b>إعدادات المحرك (Risk / Fees / Slippage / Target)</b>
+        <button class="tf-btn" onclick="applyEngineSettings()" id="applySettingsBtn">تطبيق وإعادة التشغيل</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:8px;font-size:0.78rem;">
+        <label>Account Balance $<input type="number" id="cfgAccountBalance" value="0" step="100"></label>
+        <label>Risk % / صفقة<input type="number" id="cfgRiskPercent" value="0" step="0.1"></label>
+        <label>Position Size (ثابت — يُستخدم فقط إن كانت Account/Risk% = 0)<input type="number" id="cfgPositionSize" value="1" step="0.01"></label>
+        <label>Target Profit $ (0 = معطّل)<input type="number" id="cfgTargetProfit" value="0" step="1"></label>
+        <label>Fee Rate % (من القيمة الفعلية)<input type="number" id="cfgFeeRatePct" value="0.055" step="0.001"></label>
+        <label>Fee Per Fill $ (ثابت)<input type="number" id="cfgFeePerFill" value="0" step="0.01"></label>
+        <label>Slippage × ATR<input type="number" id="cfgSlippageAtrMult" value="0.02" step="0.01"></label>
+        <label>Daily Loss Limit $ (0 = معطّل)<input type="number" id="cfgDailyLossLimit" value="0" step="10"></label>
+        <label>Max Trades/Day (0 = معطّل)<input type="number" id="cfgMaxTradesPerDay" value="0" step="1"></label>
+        <label>Max Consecutive Losses (0 = معطّل)<input type="number" id="cfgMaxConsecutiveLosses" value="0" step="1"></label>
+        <label>Day Boundary Offset (ساعات)<input type="number" id="cfgDayBoundaryOffset" value="0" step="1"></label>
+        <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="cfgRequireTP1" checked style="width:auto;"> يتطلب TP1 يحقق الهدف للتنبيه</label>
+    </div>
+    <div id="settingsApplyMsg" style="margin-top:6px;color:#94a3b8;font-size:0.72rem;">تغيير هذه القيم يعيد بناء المحرك ويصفّر حالة الصفقة الحالية (لا يمس أي صفقة حقيقية — هذه أداة تحليلية فقط).</div>
 </div>
 <script>
 /* ==========================================================================
@@ -472,6 +505,12 @@ class StrictCausalSMCEngine {
             trailAtrMult: 1.5,
             chainTtlBars: 40,
             fvgMinGapAtr: 0.10,      // 8) minimum FVG gap size relative to ATR — rejects noise-sized gaps
+            // 9/10) OB/FVG lifecycle: how long a zone is tracked before being
+            // written off as decayed if price never returns to it, and
+            // whether a zone detected as "reused" (already touched/mitigated
+            // by an earlier chain) should cost the causal-chain vote points.
+            zoneMaxAgeBars: 300,
+            penalizeReusedOb: true,
             requireTP1ForSignal: true, // only fire an actionable/notified signal if TP1 alone clears targetProfit
             targetProfit: 0,        // user desired profit in $
             htfBucketHours: 4,       // HTF bias now resamples by real clock boundaries (see updateHtfBias), not a fixed LTF bar count
@@ -480,7 +519,14 @@ class StrictCausalSMCEngine {
             dailyLossLimitUsd: 0,    // 0 = off. Once today's realized loss reaches this, no new trade is opened until the next day bucket
             maxTradesPerDay: 0,      // 0 = off. Caps new entries per day bucket regardless of signal quality
             maxConsecutiveLosses: 0, // 0 = off. Pauses new entries after N losses in a row (reset by a win)
-            positionSize: 1,        // contracts/oz
+            positionSize: 1,        // contracts/oz — fallback size, only used when dynamic sizing below is off
+            // 20) Dynamic position sizing: when both are > 0, every new trade's
+            // size is derived from account risk instead of a fixed contract
+            // count, so a wide-SL setup automatically trades smaller than a
+            // tight-SL one for the same $ risk. Set accountBalanceUsd=0 to
+            // fall back to the static positionSize above.
+            accountBalanceUsd: 0,     // e.g. 10000
+            riskPercentPerTrade: 0,   // e.g. 1 = risk 1% of accountBalanceUsd per trade
             // Real contract specification instead of "price delta * size":
             // XAUUSDT on Bybit is economically 1 contract = 1 oz, tick 0.01 → tickValue 0.01
             // per contract per tick, which nets out to the same numbers as before but is
@@ -488,7 +534,18 @@ class StrictCausalSMCEngine {
             tickSize: 0.01,
             tickValue: 0.01,
             feePerFill: 0,           // flat $ commission charged per fill (entry, each partial, final exit)
-            slippagePriceUnits: 0.05,// assumed adverse slippage in price units applied per fill
+            // 21) Fees now also scale with actual notional (price * size), not
+            // just a flat per-fill charge, since a real taker fee is a % of
+            // trade value. Default ~5.5bps mirrors a typical crypto-CFD taker
+            // rate; set to 0 to keep pure flat-fee behavior.
+            feeRatePct: 0.00055,
+            // 22) Slippage now scales with live volatility (ATR) instead of a
+            // single constant across all market conditions — a 4x ATR bar
+            // realistically eats more slippage than a quiet one.
+            // slippagePriceUnits is kept as the floor/fallback when
+            // slippageAtrMult=0 or ATR isn't available yet.
+            slippagePriceUnits: 0.05,// fallback assumed adverse slippage in price units
+            slippageAtrMult: 0.02,   // slip ≈ this * current ATR (0 = disable, use flat value above)
             // Confidence "team" weights — every analyst votes 0-100 for how strongly
             // it agrees with the trade direction, then the weighted sum is the final
             // confidence. Weights must sum to 1.0.
@@ -526,6 +583,52 @@ class StrictCausalSMCEngine {
         };
         this.retestPhase = null; // 'WAITING_REJECTION' | 'WAITING_TRIGGER'
         this.retestCandle = null;
+        // 9/10) Persistent OB/FVG registry — survives across resetChain()
+        // calls (unlike this.chain) so the SAME candle/gap can be recognized
+        // as already touched/mitigated/decayed if a later, independent chain
+        // stumbles on it again. Bounded to the most recent 300 zones.
+        this.zoneRegistry = [];
+    }
+
+    // 9/10) Look up or create the persistent lifecycle record for an OB/FVG.
+    // Dedupe key is (kind, type, index) — the same candle/gap re-detected by
+    // a later chain returns its EXISTING record (with whatever touches/
+    // mitigation happened since), not a fresh one.
+    registerZone(kind, zone, bar) {
+        let entry = this.zoneRegistry.find(z => z.kind === kind && z.type === zone.type && z.index === zone.index);
+        if (!entry) {
+            entry = {
+                kind, type: zone.type, top: zone.top, bottom: zone.bottom, index: zone.index,
+                createdAtTime: bar.time, touches: 0, status: 'fresh', lastTouchIndex: null
+            };
+            this.zoneRegistry.push(entry);
+            if (this.zoneRegistry.length > 300) this.zoneRegistry.shift();
+        }
+        return entry;
+    }
+
+    // 9/10) Called every closed bar (regardless of trade/chain state) to
+    // advance every tracked zone's lifecycle:
+    //  - a wick into the zone with a close still on the origin side =
+    //    'partially_mitigated' (touched, not consumed) + touches++
+    //  - a CLOSE all the way through the zone = 'mitigated' (consumed —
+    //    the imbalance/OB has effectively done its job and traded through)
+    //  - no touch for zoneMaxAgeBars bars = 'expired' (too old to trust)
+    updateZoneLifecycle(bar, barIndex) {
+        const maxAge = this.config.zoneMaxAgeBars || 300;
+        for (const z of this.zoneRegistry) {
+            if (z.status === 'mitigated' || z.status === 'expired' || barIndex <= z.index) continue;
+            const wicksInto = bar.low <= z.top && bar.high >= z.bottom;
+            if (wicksInto) {
+                z.touches++;
+                z.lastTouchIndex = barIndex;
+                const isBull = z.type.startsWith('Bullish');
+                const closedThrough = isBull ? bar.close < z.bottom : bar.close > z.top;
+                z.status = closedThrough ? 'mitigated' : 'partially_mitigated';
+            } else if (barIndex - z.index > maxAge) {
+                z.status = 'expired';
+            }
+        }
     }
 
     pushEvent(type, barIndex, payload, causedByEventId, extra) {
@@ -557,8 +660,7 @@ class StrictCausalSMCEngine {
         }
         return path;
     }
-
-    // Validate the active chain is a genuinely unbroken causal sequence
+     Validate the active chain is a genuinely unbroken causal sequence
     // (each link points to the previous link, indices are non-decreasing,
     // and no link has been marked invalidated).
     checkChainIntegrity() {
@@ -589,6 +691,10 @@ class StrictCausalSMCEngine {
     // -----------------------------------------------------------
     updateStructure(subData, currentIndex) {
         const { extWindow, intWindow } = this.config;
+        // 9/10) Lifecycle tick runs unconditionally every closed bar, whether
+        // or not a trade/chain is active — mitigation and decay happen to a
+        // zone whether we're currently watching it or not.
+        this.updateZoneLifecycle(subData[currentIndex], currentIndex);
         if (currentIndex < extWindow * 2) return;
 
         const highs = subData.map(d => d.high);
@@ -670,6 +776,7 @@ class StrictCausalSMCEngine {
         };
         this.liquidityMap.equalHighs = cluster(protHighs);
         this.liquidityMap.equalLows = cluster(protLows);
+
         // Previous-day high/low from bar timestamps. Day boundary is
         // configurable (config.dayBoundaryOffsetHours) instead of a
         // silently-assumed UTC midnight — gold/FX desks commonly use a
@@ -767,6 +874,7 @@ class StrictCausalSMCEngine {
             this.updateStructure(subData, i);
             if (i % 5 === 0) this.updateHtfBias(subData, i, groupSize || 15);
             this.evaluateBar(subData, i, lastBar, atr);
+            this.totalBarsEvaluated = (this.totalBarsEvaluated || 0) + 1; // 24) denominator for Exposure %
         }
 
         const lastBar = closedData[closedData.length - 1];
@@ -791,8 +899,7 @@ class StrictCausalSMCEngine {
         this.evaluateBar(subData, currentIndex, lastBar, atr);
         return this.buildResult(lastBar, atr);
     }
-
-    liveUpdate(formingBar, barIndex) {
+    Update(formingBar, barIndex) {
         if (this.state === 'ACTIVE' || this.state === 'TP1') {
             this.manageTrade(formingBar, barIndex);
             if (this.state === 'CLOSED' || this.state === 'INVALIDATED') {
@@ -861,7 +968,8 @@ class StrictCausalSMCEngine {
                 }, null, { timestamp: bar.time, direction: 'BULLISH_SWEEP', confidence: strength });
             }
             return;
-                                           }
+        }
+
         // -----------------------------------------------------------
         // 2) Internal MSS tied to real protected *internal* structure:
         //    only an internal swing that is still 'protected' (i.e. not
@@ -977,6 +1085,18 @@ class StrictCausalSMCEngine {
             const isOpposite = isBull ? c.close < c.open : c.close > c.open;
             if (isOpposite) {
                 foundOb = { type: isBull ? 'Bullish_OB' : 'Bearish_OB', top: c.high, bottom: c.low, index: originIdx, legStart };
+                // 9) OB properties: Freshness/Touches/Mitigation come from the
+                // persistent registry (same candle may have been seen by an
+                // earlier, independent chain); Departure = how far price has
+                // travelled from the OB candle already, in ATR — a stronger
+                // departure is a more convincing "this OB actually caused a move".
+                const obRecord = this.registerZone('OB', foundOb, bar);
+                foundOb.touches = obRecord.touches;
+                foundOb.freshness = obRecord.touches === 0 ? 'FRESH'
+                    : (obRecord.status === 'mitigated' ? 'REUSED_MITIGATED' : 'REUSED_PARTIAL');
+                foundOb.ageBars = barIndex - originIdx;
+                const legRange = Math.abs(bar.close - c.close);
+                foundOb.departureAtr = atr ? +(legRange / atr).toFixed(2) : null;
             }
         }
 
@@ -995,9 +1115,17 @@ class StrictCausalSMCEngine {
             }
             // Gap exists but is smaller than fvgMinGapAtr*ATR → treated as noise,
             // deliberately dropped rather than registered as a valid FVG.
-        }
-
-        if (!foundOb && !foundFvg) return;
+            if (foundFvg) {
+                // 10) FVG lifecycle: newly detected this bar, so it always
+                // starts 'fresh' in the registry (index === barIndex, so no
+                // prior bar could have touched it yet) — the registry's real
+                // value here is downstream: any LATER bar checking this same
+                // gap (e.g. retest logic) sees its live fill status.
+                const fvgRecord = this.registerZone('FVG', foundFvg, bar);
+                foundFvg.fillStatus = fvgRecord.status; // 'fresh' at creation, evolves via updateZoneLifecycle
+            }
+    }
+    if (!foundOb && !foundFvg) return;
 
         let zoneTop, zoneBottom, confluence = false;
         if (foundOb && foundFvg) {
@@ -1041,7 +1169,8 @@ class StrictCausalSMCEngine {
         this.chain.causalZoneEvent = this.pushEvent('CAUSAL_ZONE_ESTABLISHED', barIndex, {
             ob: foundOb, fvg: foundFvg, zoneTop, zoneBottom, confluence,
             consumed: false,
-            quality: confluence ? 'HIGH (OB+FVG confluence)' : (foundOb && foundFvg ? 'MEDIUM (OB+FVG, no overlap)' : (foundOb ? 'MEDIUM (OB only)' : 'LOW (FVG only)'))
+            quality: (confluence ? 'HIGH (OB+FVG confluence)' : (foundOb && foundFvg ? 'MEDIUM (OB+FVG, no overlap)' : (foundOb ? 'MEDIUM (OB only)' : 'LOW (FVG only)')))
+                + (foundOb && foundOb.freshness !== 'FRESH' ? ` [OB ${foundOb.freshness}]` : '')
         }, dispId, { timestamp: bar.time });
     }
 
@@ -1100,8 +1229,9 @@ class StrictCausalSMCEngine {
                 this.retestPhase = 'WAITING_TRIGGER';
             }
             return;
-    }
-    if (this.retestPhase === 'WAITING_TRIGGER') {
+        }
+
+        if (this.retestPhase === 'WAITING_TRIGGER') {
             // Internal trigger: price must actually break the rejection
             // candle's extreme in our favour — the "reaction" leg — before
             // we call the setup confirmed. A same-coloured candle alone is
@@ -1150,6 +1280,12 @@ class StrictCausalSMCEngine {
         causalVote += (this.chain.displacementEvent.confidence || 50) * 0.35;
         causalVote += zone.confluence ? 15 : 5;
         causalVote += chainCheck.valid ? 10 : -25;
+        // 9) A reused OB (already touched/mitigated by an earlier, unrelated
+        // chain) is a weaker causal origin than one that has never traded
+        // back into — the level's "surprise value" is already partly spent.
+        if (zone.ob && zone.ob.freshness && zone.ob.freshness !== 'FRESH' && this.config.penalizeReusedOb) {
+            causalVote -= (zone.ob.freshness === 'REUSED_MITIGATED' ? 18 : 10);
+        }
         causalVote = Math.max(0, Math.min(100, causalVote));
 
         // Analyst 2 — HTF structural bias alignment.
@@ -1206,11 +1342,41 @@ class StrictCausalSMCEngine {
         return (priceDiff / this.config.tickSize) * this.config.tickValue * posSize;
     }
 
-    // Net P/L for one fill (partial or final), fees and slippage included.
+    // 20) Risk-based dynamic size: contracts implied by "risk this many $ at
+    // this SL distance", falling back to the static config.positionSize when
+    // account/risk% aren't configured (both 0 by default → old behavior).
+    sizeForRisk(riskPriceUnits) {
+        const { accountBalanceUsd, riskPercentPerTrade, tickSize, tickValue, positionSize } = this.config;
+        if (accountBalanceUsd > 0 && riskPercentPerTrade > 0 && riskPriceUnits > 0) {
+            const riskUsd = accountBalanceUsd * (riskPercentPerTrade / 100);
+            const lossPerUnitSize = (riskPriceUnits / tickSize) * tickValue; // $ lost per 1 unit of size if SL hits
+            if (lossPerUnitSize > 0) return +(riskUsd / lossPerUnitSize).toFixed(4);
+        }
+        return positionSize || 1;
+    }
+
+    // 22) Current adverse-slippage estimate in price units: ATR-scaled when
+    // ATR is available and slippageAtrMult>0, else the flat fallback.
+    currentSlippage() {
+        const atr = this._lastAtr;
+        if (this.config.slippageAtrMult > 0 && atr) return this.config.slippageAtrMult * atr;
+        return this.config.slippagePriceUnits || 0;
+    }
+
+    // 21) Fee for one fill: flat per-fill charge + a rate on the fill's
+    // actual notional value (price * size), so bigger/dynamically-sized
+    // trades pay proportionally more, not the same flat $ as a 1-lot trade.
+    feeForFill(price, posSize) {
+        const flat = this.config.feePerFill || 0;
+        const notional = Math.abs(price) * posSize * (this.config.tickValue / this.config.tickSize);
+        const rate = (this.config.feeRatePct || 0) * notional;
+        return +(flat + rate).toFixed(4);
+    }
+        // Net P/L for one fill (partial or final), fees and slippage included.
     fillPnL(tr, exitPrice, fraction) {
-        const posSize = this.config.positionSize || 1;
-        const slip = this.config.slippagePriceUnits || 0;
-        const fee = this.config.feePerFill || 0;
+        const posSize = tr.positionSize || this.config.positionSize || 1;
+        const slip = this.currentSlippage();
+        const fee = this.feeForFill(exitPrice, posSize * fraction);
         const rawDiff = tr.direction === 'BUY' ? (exitPrice - tr.entry) : (tr.entry - exitPrice);
         const effDiff = Math.max(-1e9, rawDiff - slip); // slippage assumed to work against the fill
         const gross = this.pnlForPriceMove(effDiff, posSize * fraction);
@@ -1274,14 +1440,19 @@ class StrictCausalSMCEngine {
         // the old code charged only 2 fees even for the TP2 scenario and
         // priced it as if the whole size exited at TP2 in one shot, which
         // overstated the TP2 dollar projection.
-        const posSize = this.config.positionSize || 1;
+        // 20) Size this specific trade off its own SL distance (risk-based),
+        // not a fixed contract count — a wider stop here means fewer
+        // contracts for the same $ risk than a tighter stop would need.
+        const posSize = this.sizeForRisk(risk);
         const dist1 = Math.abs(tp1 - bar.close), dist2 = Math.abs(tp2 - bar.close);
-        const slip = this.config.slippagePriceUnits || 0;
-        const fee = this.config.feePerFill || 0;
-        const projectedProfitTP1 = +(this.pnlForPriceMove(Math.max(0, dist1 - slip), posSize) - fee * 2).toFixed(2);
+        const slip = this.currentSlippage();
+        const feeEntry = this.feeForFill(bar.close, posSize);
+        const feeTp1Exit = this.feeForFill(tp1, posSize * 0.5);
+        const feeTp2Exit = this.feeForFill(tp2, posSize * 0.5);
+        const projectedProfitTP1 = +(this.pnlForPriceMove(Math.max(0, dist1 - slip), posSize) - feeEntry - feeTp1Exit).toFixed(2);
         const tp1Leg = this.pnlForPriceMove(Math.max(0, dist1 - slip), posSize * 0.5);
         const tp2Leg = this.pnlForPriceMove(Math.max(0, dist2 - slip), posSize * 0.5);
-        const projectedProfitTP2 = +(tp1Leg + tp2Leg - fee * 3).toFixed(2);
+        const projectedProfitTP2 = +(tp1Leg + tp2Leg - feeEntry - feeTp1Exit - feeTp2Exit).toFixed(2);
         const target = this.config.targetProfit || 0;
         const meetsTargetAtTP1 = target > 0 ? projectedProfitTP1 >= target : true;
         const meetsTargetAtTP2 = target > 0 ? projectedProfitTP2 >= target : true;
@@ -1339,14 +1510,17 @@ class StrictCausalSMCEngine {
             confidence, confidenceBreakdown, htfBias: this.htfBias, htfAligned,
             projectedProfitTP1, projectedProfitTP2, meetsTargetAtTP1, meetsTargetAtTP2, actionable,
             entryBarIndex: barIndex, entryTime: bar.time, partialClosed: false, beApplied: false,
-            initialSL: sl, initialRisk: risk,
-            realizedPnL: 0, feesPaid: fee, slippageCost: 0, netPnL: null, closedTime: null
+            initialSL: sl, initialRisk: risk, positionSize: posSize,
+            // 24) MAE/MFE tracked bar-by-bar in manageTrade; duration filled
+            // in on close by finalizeTrade.
+            mfe: 0, mae: 0, durationBars: null,
+            realizedPnL: 0, feesPaid: feeEntry, slippageCost: 0, netPnL: null, closedTime: null
         };
 
         this.pushEvent('TRADE_EXECUTED', barIndex, this.activeTrade, this.chain.confirmEvent.id, { timestamp: bar.time, direction, confidence });
         this.transitionTo('ACTIVE', barIndex, 'TRADE_ENTERED', this.chain.confirmEvent.id, bar);
     }
-    
+
     // -----------------------------------------------------------
     // 16/17/18/28) Trade management:
     //  - TP1 = simulated partial close (books partial P/L, halves the
@@ -1359,6 +1533,14 @@ class StrictCausalSMCEngine {
     // -----------------------------------------------------------
     manageTrade(bar, barIndex) {
         const tr = this.activeTrade;
+        // 24) Max Favorable/Adverse Excursion — how far price moved in the
+        // trade's favor / against it at any point, independent of where it
+        // actually exited. Tracked every bar so it reflects the full path,
+        // not just entry vs. exit.
+        const favMove = tr.direction === 'BUY' ? (bar.high - tr.entry) : (tr.entry - bar.low);
+        const advMove = tr.direction === 'BUY' ? (tr.entry - bar.low) : (bar.high - tr.entry);
+        tr.mfe = Math.max(tr.mfe || 0, favMove);
+        tr.mae = Math.max(tr.mae || 0, advMove);
         const hitSL = tr.direction === 'BUY' ? bar.low <= tr.sl : bar.high >= tr.sl;
         const hitTP2 = tr.direction === 'BUY' ? bar.high >= tr.tp2 : bar.low <= tr.tp2;
         const hitTP1 = tr.direction === 'BUY' ? bar.high >= tr.tp1 : bar.low <= tr.tp1;
@@ -1463,12 +1645,13 @@ class StrictCausalSMCEngine {
 
     finalizeTrade(barIndex) {
         if (this.activeTrade) {
-            this.tradeHistory.push({ ...this.activeTrade, closedBarIndex: barIndex, result: this.state });
+            const durationBars = barIndex - this.activeTrade.entryBarIndex;
+            this.tradeHistory.push({ ...this.activeTrade, closedBarIndex: barIndex, durationBars, result: this.state });
             this.activeTrade = null;
         }
         this.resetChain();
     }
-
+    
     // -----------------------------------------------------------
     // Backtest Statistics Engine: Win Rate, Expectancy, Profit Factor,
     // Average R, Max Drawdown, Consecutive Losses, Net P/L — computed
@@ -1477,16 +1660,22 @@ class StrictCausalSMCEngine {
     computeStatistics() {
         const trades = this.tradeHistory.filter(t => t.netPnL != null);
         const n = trades.length;
-        const empty = { count: 0, winRate: 0, expectancyR: 0, expectancyUsd: 0, profitFactor: 0, avgR: 0, maxDrawdown: 0, consecutiveLosses: 0, netPnL: 0 };
+        const empty = {
+            count: 0, winRate: 0, expectancyR: 0, expectancyUsd: 0, profitFactor: 0, avgR: 0, maxDrawdown: 0,
+            consecutiveLosses: 0, netPnL: 0, sharpe: null, sortino: null, returnOverMaxDD: null,
+            avgDurationBars: null, exposurePct: null, avgMfeR: null, avgMaeR: null
+        };
         if (n === 0) return empty;
 
-        const posSize = this.config.positionSize || 1;
         let grossWin = 0, grossLoss = 0, wins = 0, netPnL = 0;
-        let rSum = 0, rCount = 0;
+        const rValues = []; // per-trade R-multiples, used for expectancy AND Sharpe/Sortino below
         let curLossStreak = 0, maxLossStreak = 0;
         let running = 0, peak = 0, maxDD = 0;
+        let durationSum = 0, durationCount = 0, barsInTrades = 0;
+        let mfeRSum = 0, maeRSum = 0, mfeMaeCount = 0;
 
         for (const t of trades) {
+            const posSize = t.positionSize || this.config.positionSize || 1;
             netPnL += t.netPnL;
             running += t.netPnL;
             if (running > peak) peak = running;
@@ -1497,20 +1686,56 @@ class StrictCausalSMCEngine {
             else { grossLoss += Math.abs(t.netPnL); curLossStreak++; maxLossStreak = Math.max(maxLossStreak, curLossStreak); }
 
             const riskUsd = t.initialRisk ? this.pnlForPriceMove(t.initialRisk, posSize) : null;
-            if (riskUsd && riskUsd > 0) { rSum += t.netPnL / riskUsd; rCount++; }
-}
+            if (riskUsd && riskUsd > 0) rValues.push(t.netPnL / riskUsd);
+
+            if (t.durationBars != null) { durationSum += t.durationBars; durationCount++; barsInTrades += t.durationBars; }
+            if (t.initialRisk && t.initialRisk > 0) {
+                if (t.mfe != null) { mfeRSum += t.mfe / t.initialRisk; mfeMaeCount++; }
+                if (t.mae != null) maeRSum += t.mae / t.initialRisk;
+            }
+        }
 
         const winRate = +((wins / n) * 100).toFixed(1);
         const avgWin = wins > 0 ? grossWin / wins : 0;
         const avgLoss = (n - wins) > 0 ? grossLoss / (n - wins) : 0;
         const expectancyUsd = +(((winRate / 100) * avgWin) - ((1 - winRate / 100) * avgLoss)).toFixed(2);
+        const rCount = rValues.length;
+        const rSum = rValues.reduce((s, v) => s + v, 0);
         const avgR = rCount > 0 ? +(rSum / rCount).toFixed(2) : 0;
         const profitFactor = grossLoss > 0 ? +(grossWin / grossLoss).toFixed(2) : (grossWin > 0 ? Infinity : 0);
+
+        // 24) Sharpe/Sortino computed on the per-trade R-multiple series
+        // (not on a fixed-interval equity curve — this app has no evenly
+        // spaced daily/periodic equity marks, only discrete trade outcomes,
+        // so this is a per-trade risk-adjusted-return proxy, not a textbook
+        // annualized Sharpe). Sortino uses only the downside (R<0) leg.
+        let sharpe = null, sortino = null;
+        if (rCount >= 5) {
+            const mean = rSum / rCount;
+            const variance = rValues.reduce((s, v) => s + (v - mean) ** 2, 0) / rCount;
+            const std = Math.sqrt(variance);
+            sharpe = std > 0 ? +(mean / std).toFixed(2) : null;
+            const downside = rValues.filter(v => v < 0);
+            if (downside.length > 0) {
+                const downVar = downside.reduce((s, v) => s + v * v, 0) / rCount; // full-n denominator (standard Sortino convention)
+                const downDev = Math.sqrt(downVar);
+                sortino = downDev > 0 ? +(mean / downDev).toFixed(2) : null;
+            }
+        }
+        // Calmar is properly an *annualized* return / max drawdown ratio;
+        // without a real time-series equity curve we only have net $ over
+        // maxDD $, so this is reported as "Return/MaxDD", not true Calmar.
+        const returnOverMaxDD = maxDD > 0 ? +(netPnL / maxDD).toFixed(2) : null;
+        const avgDurationBars = durationCount > 0 ? +(durationSum / durationCount).toFixed(1) : null;
+        const exposurePct = this.totalBarsEvaluated > 0 ? +((barsInTrades / this.totalBarsEvaluated) * 100).toFixed(1) : null;
+        const avgMfeR = mfeMaeCount > 0 ? +(mfeRSum / mfeMaeCount).toFixed(2) : null;
+        const avgMaeR = mfeMaeCount > 0 ? +(maeRSum / mfeMaeCount).toFixed(2) : null;
 
         return {
             count: n, winRate, expectancyR: avgR,
             expectancyUsd, profitFactor, avgR, maxDrawdown: +maxDD.toFixed(2),
-            consecutiveLosses: maxLossStreak, netPnL: +netPnL.toFixed(2)
+            consecutiveLosses: maxLossStreak, netPnL: +netPnL.toFixed(2),
+            sharpe, sortino, returnOverMaxDD, avgDurationBars, exposurePct, avgMfeR, avgMaeR
         };
     }
 
@@ -1520,21 +1745,33 @@ class StrictCausalSMCEngine {
     // being trusted at face value.
     computeScoreBuckets() {
         const ranges = [[50, 60], [60, 70], [70, 80], [80, 90], [90, 101]];
-        const posSize = this.config.positionSize || 1;
+        const LOW_SAMPLE_N = 20; // below this, don't trust the bucket's win rate as calibrated
         return ranges.map(([lo, hi]) => {
             const bucketTrades = this.tradeHistory.filter(t => t.netPnL != null && t.confidence >= lo && t.confidence < hi);
             const n = bucketTrades.length;
-            if (n === 0) return { range: `${lo}-${hi === 101 ? '100+' : hi}`, count: 0, winRate: null, avgR: null };
+            if (n === 0) return { range: `${lo}-${hi === 101 ? '100+' : hi}`, count: 0, winRate: null, avgR: null, ciLow: null, ciHigh: null, lowSample: true };
             const wins = bucketTrades.filter(t => t.netPnL > 0).length;
             let rSum = 0, rCount = 0;
             for (const t of bucketTrades) {
+                const posSize = t.positionSize || this.config.positionSize || 1;
                 const riskUsd = t.initialRisk ? this.pnlForPriceMove(t.initialRisk, posSize) : null;
                 if (riskUsd && riskUsd > 0) { rSum += t.netPnL / riskUsd; rCount++; }
             }
+            const winRate = +((wins / n) * 100).toFixed(1);
+            // 25) 95% Wald confidence interval on the win rate, so a bucket
+            // reading "90%" off 4 trades visibly carries a huge interval
+            // instead of looking as solid as one built on 200 trades. This
+            // is what makes the score's real-world Probability honest: the
+            // point estimate alone (like the raw 87% weighted score) is not
+            // a calibrated probability without knowing how much data backs it.
+            const p = wins / n;
+            const se = Math.sqrt((p * (1 - p)) / n);
+            const ciLow = +Math.max(0, (p - 1.96 * se) * 100).toFixed(1);
+            const ciHigh = +Math.min(100, (p + 1.96 * se) * 100).toFixed(1);
             return {
                 range: `${lo}-${hi === 101 ? '100+' : hi}`, count: n,
-                winRate: +((wins / n) * 100).toFixed(1),
-                avgR: rCount > 0 ? +(rSum / rCount).toFixed(2) : null
+                winRate, avgR: rCount > 0 ? +(rSum / rCount).toFixed(2) : null,
+                ciLow, ciHigh, lowSample: n < LOW_SAMPLE_N
             };
         });
     }
@@ -1591,6 +1828,9 @@ class StrictCausalSMCEngine {
         causalVote += (this.chain.displacementEvent ? (this.chain.displacementEvent.confidence || 50) : 50) * 0.35;
         causalVote += zone.confluence ? 15 : 5;
         causalVote += chainCheck.valid ? 10 : -25;
+        if (zone.ob && zone.ob.freshness && zone.ob.freshness !== 'FRESH' && this.config.penalizeReusedOb) {
+            causalVote -= (zone.ob.freshness === 'REUSED_MITIGATED' ? 18 : 10);
+        }
         causalVote = Math.max(0, Math.min(100, causalVote));
         const htfVote = htfAligned ? (this.htfBias === 'NEUTRAL' ? 55 : 85) : 15;
         const w = this.config.confidenceWeights;
@@ -1672,7 +1912,8 @@ let pollTimer = null;
 let ws = null;
 let wsReconnectTimer = null;
 let usingWs = false;
-    const TF_GROUP_SIZE = { '1m': 15, '5m': 12, '15m': 16, '4h': 6 }; // legacy param kept for the processLiveTick/replay signature; HTF bias itself now uses real clock buckets (config.htfBucketHours), not this
+
+const TF_GROUP_SIZE = { '1m': 15, '5m': 12, '15m': 16, '4h': 6 }; // legacy param kept for the processLiveTick/replay signature; HTF bias itself now uses real clock buckets (config.htfBucketHours), not this
 const TF_INTERVAL = { '1m': '1', '5m': '5', '15m': '15', '4h': '240' };
 const TF_WS_TOPIC = { '1m': '1', '5m': '5', '15m': '15', '4h': '240' };
 
@@ -1768,6 +2009,48 @@ function changeTimeframe(tf, event) {
     fetchBybitData().then(() => connectWs());
 }
 
+// Reads the settings panel inputs into engineConfig and rebuilds the engine
+// with them — previously these knobs (targetProfit, positionSize, and every
+// risk/fee/slippage field added this session) existed only in code with NO
+// way for the user to actually change them from the UI. This wires them up.
+function applyEngineSettings() {
+    const num = (id, fallback) => {
+        const el = document.getElementById(id);
+        const v = el ? parseFloat(el.value) : NaN;
+        return Number.isFinite(v) ? v : fallback;
+    };
+    engineConfig.targetProfit = num('cfgTargetProfit', 0);
+    engineConfig.positionSize = num('cfgPositionSize', 1);
+    engineConfig.accountBalanceUsd = num('cfgAccountBalance', 0);
+    engineConfig.riskPercentPerTrade = num('cfgRiskPercent', 0);
+    engineConfig.feeRatePct = num('cfgFeeRatePct', 0.055) / 100; // input is in %, config stores a fraction
+    engineConfig.feePerFill = num('cfgFeePerFill', 0);
+    engineConfig.slippageAtrMult = num('cfgSlippageAtrMult', 0.02);
+    engineConfig.dailyLossLimitUsd = num('cfgDailyLossLimit', 0);
+    engineConfig.maxTradesPerDay = num('cfgMaxTradesPerDay', 0);
+    engineConfig.maxConsecutiveLosses = num('cfgMaxConsecutiveLosses', 0);
+    engineConfig.dayBoundaryOffsetHours = num('cfgDayBoundaryOffset', 0);
+    const tp1Chk = document.getElementById('cfgRequireTP1');
+    engineConfig.requireTP1ForSignal = tp1Chk ? tp1Chk.checked : true;
+
+    const msg = document.getElementById('settingsApplyMsg');
+    if (msg) msg.textContent = 'تم التطبيق — يعاد بناء المحرك وإعادة معالجة البيانات المحمّلة...';
+
+    // Rebuild exactly like changeTimeframe does: fresh engine, fresh replay,
+    // so historical stats/zones reflect the new config consistently instead
+    // of mixing trades priced under the old fees/sizing with new ones.
+    engineInstance = new window.StrictCausalSMCEngine(engineConfig);
+    processedClosedCount = 0;
+    engineInitialized = false;
+    if (historicalData && historicalData.length >= 60) {
+        lastResult = engineInstance.replay(historicalData, TF_GROUP_SIZE[currentTF]);
+        processedClosedCount = historicalData.length - 1;
+        engineInitialized = true;
+        if (lastResult) updateUI(lastResult, historicalData[historicalData.length - 1]);
+    }
+    if (msg) msg.textContent = 'تم التطبيق. الإعدادات الحالية تُستخدم في كل صفقة جديدة ومحسوبة في الإحصائيات.';
+}
+
 function toggleOB() {
     showOB = !showOB;
     document.getElementById('obToggle').classList.toggle('active', showOB);
@@ -1799,6 +2082,42 @@ function setConnectionStatus(ok, error) {
 // الاستطلاع كل 5 ثوانٍ لأنه يدفع كل تحديث سعر فور حدوثه بدل الانتظار.
 // يبقى REST polling موجوداً كـ fallback تلقائي إن فشل WS أو انقطع.
 // -----------------------------------------------------------------------
+// 23) Watchdog/Heartbeat: a WebSocket can stay in readyState=OPEN while the
+// actual data feed has gone silent (dead-but-not-closed connection, common
+// on mobile networks / proxies). Two independent timers guard against that:
+//  - wsHeartbeatTimer: sends Bybit's required {op:'ping'} every 20s to keep
+//    the socket alive AND to get a pong we can use as a liveness signal.
+//  - wsWatchdogTimer: if NO message (data or pong) has arrived in 35s despite
+//    readyState still being OPEN, force-close and let onclose's reconnect
+//    logic take over — readyState alone is not proof the feed is live.
+let wsLastMessageAt = 0;
+let wsHeartbeatTimer = null;
+let wsWatchdogTimer = null;
+const WS_HEARTBEAT_MS = 20000;
+const WS_STALE_MS = 35000;
+
+function startWsWatchdog() {
+    stopWsWatchdog();
+    wsLastMessageAt = Date.now();
+    wsHeartbeatTimer = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            try { ws.send(JSON.stringify({ op: 'ping' })); } catch (e) { /* ignore — watchdog below will catch it */ }
+        }
+    }, WS_HEARTBEAT_MS);
+    wsWatchdogTimer = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN && Date.now() - wsLastMessageAt > WS_STALE_MS) {
+            // Connection reports "open" but nothing — not even a pong — has
+            // come through in over WS_STALE_MS. Treat as dead and reconnect.
+            try { ws.close(); } catch (e) {}
+        }
+    }, 5000);
+}
+
+function stopWsWatchdog() {
+    if (wsHeartbeatTimer) { clearInterval(wsHeartbeatTimer); wsHeartbeatTimer = null; }
+    if (wsWatchdogTimer) { clearInterval(wsWatchdogTimer); wsWatchdogTimer = null; }
+}
+
 function connectWs() {
     closeWs();
     try {
@@ -1808,9 +2127,11 @@ function connectWs() {
             ws.send(JSON.stringify({ op: 'subscribe', args: [topic] }));
             usingWs = true;
             setWsIndicator('live');
+            startWsWatchdog();
             if (pollTimer) { clearInterval(pollTimer); pollTimer = setInterval(fetchBybitData, 20000); } // احتياطي بطيء فقط
         };
         ws.onmessage = (msg) => {
+            wsLastMessageAt = Date.now(); // any message — data OR pong — counts as proof the feed is alive
             try {
                 const data = JSON.parse(msg.data);
                 if (!data.topic || !data.topic.startsWith('kline.') || !data.data || !data.data[0]) return;
@@ -1821,11 +2142,12 @@ function connectWs() {
                     low: parseFloat(k.low), close: parseFloat(k.close),
                     volume: parseFloat(k.volume), confirm: !!k.confirm
                 });
-            } catch (e) { /* تجاهل رسائل غير متوقعة (ping/pong إلخ) */ }
+            } catch (e) { /* تجاهل رسائل غير متوقعة (ping/pong إلخ) — لكنها سجّلت وصولها أعلاه بالفعل */ }
         };
         ws.onerror = () => { usingWs = false; setWsIndicator('poll'); };
         ws.onclose = () => {
             usingWs = false; setWsIndicator('poll');
+            stopWsWatchdog();
             if (pollTimer) clearInterval(pollTimer);
             pollTimer = setInterval(fetchBybitData, 5000);
             wsReconnectTimer = setTimeout(connectWs, 8000);
@@ -1833,10 +2155,10 @@ function connectWs() {
     } catch (e) {
         usingWs = false; setWsIndicator('poll');
     }
-}
-
-function closeWs() {
+    }
+    function closeWs() {
     if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+    stopWsWatchdog();
     if (ws) { try { ws.onclose = null; ws.close(); } catch (e) {} ws = null; }
     usingWs = false;
 }
@@ -1945,9 +2267,8 @@ async function fetchBybitData() {
     } finally {
         isFetching = false;
     }
-        }
-    
-    
+}
+
 // -----------------------------------------------------------------------
 // Deep Backtest: real Bybit historical data via pagination (not the
 // 200-1000 candle single-request cap), split 70% In-Sample / 30%
@@ -2150,6 +2471,7 @@ function updateUI(res, formingBar) {
     const eql = (lm.equalLows || []).map(x => x.price.toFixed(1)).join(', ') || '--';
     document.getElementById("liqMapState").innerText =
         `PDH ${lm.pdh ? lm.pdh.toFixed(1) : '--'} | PDL ${lm.pdl ? lm.pdl.toFixed(1) : '--'} | EQH [${eqh}] | EQL [${eql}]`;
+
     const tradeStatsEl = document.getElementById("tradeStatsVal");
     if (tradeStatsEl) {
         if (res.lastTrade) {
@@ -2177,12 +2499,24 @@ function updateUI(res, formingBar) {
             ? `${st.winRate}% | PF ${st.profitFactor === Infinity ? '∞' : st.profitFactor} | ${st.avgR}R | $${st.netPnL} | -$${st.maxDrawdown} | ${st.consecutiveLosses}x`
             : `لا توجد صفقات مغلقة بعد (0)`;
     }
+    // 24) Extra risk-adjusted metrics — separate line so the compact line
+    // above stays readable. Sharpe/Sortino are per-trade-R proxies (see
+    // comment on computeStatistics), not textbook annualized figures.
+    const statsExtraEl = document.getElementById("statsExtraState");
+    if (statsExtraEl) {
+        statsExtraEl.innerText = st && st.count > 0
+            ? `Sharpe(R) ${st.sharpe ?? '--'} | Sortino(R) ${st.sortino ?? '--'} | Net/MaxDD ${st.returnOverMaxDD ?? '--'} | مدة متوسطة ${st.avgDurationBars ?? '--'} شمعة | تعرّض ${st.exposurePct ?? '--'}% | MFE ${st.avgMfeR ?? '--'}R | MAE ${st.avgMaeR ?? '--'}R`
+            : '';
+    }
 
     const bucketsEl = document.getElementById("bucketsState");
     if (bucketsEl && res.scoreBuckets) {
         const nonEmpty = res.scoreBuckets.filter(b => b.count > 0);
+        // 25) Show the 95% CI and flag small-sample buckets so a bucket's
+        // win rate isn't read as a calibrated probability when it's really
+        // just 3-4 trades — e.g. "90-100+: 4 صفقة، ربح 75% (46-100٪، عيّنة صغيرة)".
         bucketsEl.innerText = nonEmpty.length
-            ? nonEmpty.map(b => `${b.range}: ${b.count} صفقة، ربح ${b.winRate}%، ${b.avgR}R`).join(' | ')
+            ? nonEmpty.map(b => `${b.range}: ${b.count} صفقة، ربح ${b.winRate}% (${b.ciLow}-${b.ciHigh}%${b.lowSample ? '، عيّنة صغيرة' : ''}), ${b.avgR}R`).join(' | ')
             : 'لا توجد بيانات كافية بعد';
     }
 
