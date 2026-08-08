@@ -1,38 +1,42 @@
-<!DOCTYPE html>  <html lang="ar" dir="rtl">  
-<head>  
-<meta charset="UTF-8">  
-<meta name="viewport" content="width=device-width, initial-scale=1.0">  
-<title>Mika Pro - Strict Causal SMC Engine</title>  
-<!-- تحميل مكتبة الشارت أصبح ديناميكياً بعدة مصادر احتياطية داخل السكربت أسفل الصفحة،  
-     بدل رابط CDN واحد ثابت هنا كان يفشل بصمت (LightweightCharts is not defined) لو حُجب unpkg. -->  
-<style>  
-* { box-sizing: border-box; margin: 0; padding: 0; }  
-body {  
-    background-color: #04060b;  
-    color: #f8fafc;  
-    font-family: system-ui, -apple-system, sans-serif;  
-    padding: 12px;  
-    display: flex;  
-    flex-direction: column;  
-    align-items: center;  
-}  
-.top-price-card {  
-    background: linear-gradient(145deg, #0d1322, #070a12);  
-    border-radius: 16px;  
-    padding: 16px;  
-    width: 100%;  
-    max-width: 700px;  
-    text-align: center;  
-    border: 1px solid #1e293b;  
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6);  
-    margin-bottom: 12px;  
-}  
-.header-title { font-size: 1.15rem; font-weight: 800; color: #38bdf8; margin-bottom: 2px; text-shadow: 0 0 12px rgba(56,189,248,0.3); }  
-.symbol-name { font-size: 0.78rem; color: #64748b; margin-bottom: 8px; font-weight: 500; }  
-.price-display { font-size: 2.6rem; font-weight: 900; color: #38bdf8; letter-spacing: 0.5px; margin: 4px 0; line-height: 1; }  
-.status-badge { font-size: 0.75rem; color: #34d399; margin-top: 6px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }  
-.status-badge::before { content: ""; width: 8px; height: 8px; background-color: #34d399; border-radius: 50%; box-shadow: 0 0 8px #34d399; animation: pulse 1.5s infinite; }  
-@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }  .lifecycle-tracker {
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mika Pro - Strict Causal SMC Engine v2</title>
+<!-- تحميل مكتبة الشارت ديناميكياً بعدة مصادر احتياطية داخل السكربت أسفل الصفحة. -->
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    background-color: #04060b;
+    color: #f8fafc;
+    font-family: system-ui, -apple-system, sans-serif;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.top-price-card {
+    background: linear-gradient(145deg, #0d1322, #070a12);
+    border-radius: 16px;
+    padding: 16px;
+    width: 100%;
+    max-width: 700px;
+    text-align: center;
+    border: 1px solid #1e293b;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    margin-bottom: 12px;
+}
+.header-title { font-size: 1.15rem; font-weight: 800; color: #38bdf8; margin-bottom: 2px; text-shadow: 0 0 12px rgba(56,189,248,0.3); }
+.symbol-name { font-size: 0.78rem; color: #64748b; margin-bottom: 8px; font-weight: 500; }
+.price-display { font-size: 2.6rem; font-weight: 900; color: #38bdf8; letter-spacing: 0.5px; margin: 4px 0; line-height: 1; }
+.status-badge { font-size: 0.75rem; color: #34d399; margin-top: 6px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.status-badge::before { content: ""; width: 8px; height: 8px; background-color: #34d399; border-radius: 50%; box-shadow: 0 0 8px #34d399; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+.ws-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-inline-start: 6px; background: #64748b; }
+.ws-dot.live { background: #34d399; box-shadow: 0 0 6px #34d399; }
+.ws-dot.poll { background: #eab308; }
+.lifecycle-tracker {
 display: flex;
 justify-content: space-between;
 background: #04060b;
@@ -88,8 +92,47 @@ padding: 8px;
 border-radius: 8px;
 border: 1px solid #1e293b;
 font-size: 0.8rem;
+flex-wrap: wrap;
+gap: 6px;
 }
 .target-item span { color: #38bdf8; font-weight: bold; }
+
+.goal-box {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 8px;
+width: 100%;
+margin-top: 8px;
+background: #04060b;
+padding: 8px 10px;
+border-radius: 8px;
+border: 1px solid #1e293b;
+font-size: 0.72rem;
+flex-wrap: wrap;
+}
+.goal-box label { color: #94a3b8; white-space: nowrap; }
+.goal-box input {
+    width: 78px;
+    background: #0d1322;
+    border: 1px solid #334155;
+    color: #f8fafc;
+    border-radius: 6px;
+    padding: 5px 6px;
+    font-size: 0.78rem;
+}
+.goal-alert {
+    display: none;
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-align: center;
+}
+.goal-alert.buy { display: block; background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.4); }
+.goal-alert.sell { display: block; background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.4); }
 
 .filters-dashboard {
 display: grid;
@@ -107,7 +150,7 @@ border-radius: 10px;
 text-align: center;
 }
 .filter-label { font-size: 0.62rem; color: #64748b; font-weight: 700; margin-bottom: 3px; }
-.filter-value { font-size: 0.75rem; font-weight: bold; color: #f8fafc; }
+.filter-value { font-size: 0.72rem; font-weight: bold; color: #f8fafc; line-height: 1.3; }
 
 .chart-card {
 background: #0d1322;
@@ -153,841 +196,1447 @@ overflow: hidden;
 border: 1px solid #1e293b;
 }
 #chart { width: 100%; height: 100%; }
+.note-box {
+    width: 100%;
+    max-width: 700px;
+    font-size: 0.62rem;
+    color: #64748b;
+    background: #0d1322;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-top: 8px;
+    line-height: 1.6;
+}
 </style>
 
-</head>  
-<body>  
-<div class="top-price-card">  
-    <div class="header-title">Mika Pro - Strict Causal SMC Engine</div>  
-    <div class="symbol-name">Bybit Linear - XAUUSDT (Event-Driven Causal Chain)</div>  
-    <div id="price" class="price-display">جاري التحميل...</div>  
-    <div class="status-badge" id="stateBadge">حالة النظام: SETUP</div>  
-    <div class="lifecycle-tracker">  
-        <div id="life-1" class="life-step">SETUP</div>  
-        <div id="life-2" class="life-step">ARMED</div>  
-        <div id="life-3" class="life-step">RETEST</div>  
-        <div id="life-4" class="life-step">CONFIRMED</div>  
-        <div id="life-5" class="life-step">ACTIVE</div>  
-        <div id="life-6" class="life-step">TP1</div>  
-        <div id="life-7" class="life-step">CLOSED</div>  
-        <div id="life-8" class="life-step">INVALIDATED</div>  
-    </div>  <div class="market-stats-bar">  
-    <div>Dealing Range: <span id="dealingRangeVal">--</span></div>  
-    <div>Current State: <span id="tradeLifecycleVal" style="color: #38bdf8;">SETUP</span></div>  
-</div>  
+</head>
+<body>
+<div class="top-price-card">
+    <div class="header-title">Mika Pro - Strict Causal SMC Engine v2</div>
+    <div class="symbol-name">Bybit Linear - XAUUSDT (Event-Driven Causal Chain)</div>
+    <div id="price" class="price-display">جاري التحميل...</div>
+    <div class="status-badge" id="stateBadge">حالة النظام: SETUP <span id="wsDot" class="ws-dot" title="مصدر التحديث"></span></div>
+    <div class="lifecycle-tracker">
+        <div id="life-1" class="life-step">SETUP</div>
+        <div id="life-2" class="life-step">ARMED</div>
+        <div id="life-3" class="life-step">RETEST</div>
+        <div id="life-4" class="life-step">CONFIRMED</div>
+        <div id="life-5" class="life-step">ACTIVE</div>
+        <div id="life-6" class="life-step">TP1</div>
+        <div id="life-7" class="life-step">CLOSED</div>
+        <div id="life-8" class="life-step">INVALIDATED</div>
+    </div>
+    <div class="market-stats-bar">
+        <div>Dealing Range: <span id="dealingRangeVal">--</span></div>
+        <div>Current State: <span id="tradeLifecycleVal" style="color: #38bdf8;">SETUP</span></div>
+    </div>
 
-<div class="signal-container">  
-    <span id="signalTag" class="signal-tag signal-wait">جاري التحقق من السلسلة...</span>  
-    <span class="signal-power">Chain Integrity: <strong id="signalPower" style="color: #fff;">0 Evt</strong></span>  
-</div>  
+    <div class="signal-container">
+        <span id="signalTag" class="signal-tag signal-wait">جاري التحقق من السلسلة...</span>
+        <span class="signal-power">Chain Integrity: <strong id="signalPower" style="color: #fff;">0 Evt</strong></span>
+    </div>
 
-<div class="targets-box">  
-    <div class="target-item">وقف الخسارة (SL): <span id="slVal">---</span></div>  
-    <div class="target-item">الهدف الأول (TP1): <span id="tp1Val">---</span></div>  
-    <div class="target-item">الهدف الثاني (TP2): <span id="tp2Val">---</span></div>  
+    <div class="targets-box">
+        <div class="target-item">وقف الخسارة (SL): <span id="slVal">---</span></div>
+        <div class="target-item">الهدف الأول (TP1): <span id="tp1Val">---</span></div>
+        <div class="target-item">الهدف الثاني (TP2): <span id="tp2Val">---</span></div>
+        <div class="target-item">الثقة: <span id="confVal">---</span></div>
+    </div>
+
+    <div class="goal-box">
+        <label>هدف الربح ($): <input id="targetProfitInput" type="number" min="0" step="0.5" value="5"></label>
+        <label>حجم المركز (أوقية): <input id="positionSizeInput" type="number" min="0.01" step="0.01" value="1"></label>
+        <button class="tf-btn" onclick="applyGoalSettings()" style="padding:6px 12px;">تحديث</button>
+        <button id="notifyBtn" class="tf-btn" onclick="requestNotifyPermission()" style="padding:6px 12px;">🔔 تفعيل التنبيهات</button>
+    </div>
+    <div id="goalAlert" class="goal-alert"></div>
 </div>
 
-</div>  <div class="filters-dashboard">  
-    <div class="filter-card">  
-        <div class="filter-label">EXTERNAL STRUCTURE</div>  
-        <div id="structState" class="filter-value" style="color: #38bdf8;">Analyzing</div>  
-    </div>  
-    <div class="filter-card">  
-        <div class="filter-label">LIQUIDITY SWEEP</div>  
-        <div id="sweepState" class="filter-value" style="color: #eab308;">Waiting</div>  
-    </div>  
-    <div class="filter-card">  
-        <div class="filter-label">INTERNAL MSS (CAUSAL)</div>  
-        <div id="mssState" class="filter-value" style="color: #38bdf8;">Waiting</div>  
-    </div>  
-    <div class="filter-card">  
-        <div class="filter-label">CAUSAL ZONE (OB/FVG)</div>  
-        <div id="causalZone" class="filter-value" style="color: #38bdf8;">None</div>  
-    </div>  
-    <div class="filter-card">  
-        <div class="filter-label">TRIGGER & CONFIRM</div>  
-        <div id="triggerState" class="filter-value" style="color: #38bdf8;">Idle</div>  
-    </div>  
-    <div class="filter-card">  
-        <div class="filter-label">CHAINED EVENT LEDGER</div>  
-        <div id="ledgerVal" class="filter-value" style="color: #34d399;">0 Chain Links</div>  
-    </div>  
-    <div class="filter-card">  
-        <div class="filter-label">TRADE HISTORY (LIVE)</div>  
-        <div id="tradeStatsVal" class="filter-value" style="color: #f8fafc;">0</div>  
-    </div>  
-</div>  <div class="chart-card">  
-    <div class="chart-toolbar">  
-        <div class="tf-group">  
-            <button class="tf-btn active" onclick="changeTimeframe('1m', event)">1m</button>  
-            <button class="tf-btn" onclick="changeTimeframe('5m', event)">5m</button>  
-            <button class="tf-btn" onclick="changeTimeframe('15m', event)">15m</button>  
-            <button class="tf-btn" onclick="changeTimeframe('4h', event)">4h</button>  
-        </div>  
-        <div class="indicator-group">  
-            <button id="obToggle" class="indicator-btn active" onclick="toggleOB()">Causal Zone</button>  
-        </div>  
-    </div>  
-    <div class="chart-container">  
-        <div id="chart"></div>  
-    </div>  
+<div class="filters-dashboard">
+    <div class="filter-card">
+        <div class="filter-label">EXTERNAL STRUCTURE</div>
+        <div id="structState" class="filter-value" style="color: #38bdf8;">Analyzing</div>
+    </div>
+    <div class="filter-card">
+        <div class="filter-label">LIQUIDITY SWEEP</div>
+        <div id="sweepState" class="filter-value" style="color: #eab308;">Waiting</div>
+    </div>
+    <div class="filter-card">
+        <div class="filter-label">INTERNAL MSS (CAUSAL)</div>
+        <div id="mssState" class="filter-value" style="color: #38bdf8;">Waiting</div>
+    </div>
+    <div class="filter-card">
+        <div class="filter-label">CAUSAL ZONE (OB/FVG)</div>
+        <div id="causalZone" class="filter-value" style="color: #38bdf8;">None</div>
+    </div>
+    <div class="filter-card">
+        <div class="filter-label">TRIGGER & CONFIRM</div>
+        <div id="triggerState" class="filter-value" style="color: #38bdf8;">Idle</div>
+    </div>
+    <div class="filter-card">
+        <div class="filter-label">CHAINED EVENT LEDGER</div>
+        <div id="ledgerVal" class="filter-value" style="color: #34d399;">0 Chain Links</div>
+    </div>
+    <div class="filter-card">
+        <div class="filter-label">TRADE HISTORY (LIVE)</div>
+        <div id="tradeStatsVal" class="filter-value" style="color: #f8fafc;">0</div>
+    </div>
+    <div class="filter-card">
+        <div class="filter-label">HTF BIAS (MTF)</div>
+        <div id="htfState" class="filter-value" style="color: #38bdf8;">--</div>
+    </div>
+    <div class="filter-card">
+        <div class="filter-label">PREMIUM / DISCOUNT</div>
+        <div id="pdState" class="filter-value" style="color: #38bdf8;">--</div>
+    </div>
+    <div class="filter-card" style="grid-column: span 3;">
+        <div class="filter-label">LIQUIDITY MAP (PDH/PDL/EQH/EQL)</div>
+        <div id="liqMapState" class="filter-value" style="color: #f8fafc;">--</div>
+    </div>
 </div>
-<script>  
-/* ==========================================================================  
-   [Strict Causal SMC State Machine Engine]  
-   ========================================================================== */  
-(function (global) {  
-"use strict";  
-  
-function calculateWilderEMA(values, period) {  
-    const out = new Array(values.length).fill(null);  
-    if (values.length < period) return out;  
-    let sum = 0;  
-    for (let i = 0; i < period; i++) sum += values[i];  
-    let prev = sum / period;  
-    out[period - 1] = prev;  
-    for (let i = period; i < values.length; i++) {  
-        prev = (values[i] - prev) / period + prev;  
-        out[i] = prev;  
-    }  
-    return out;  
-}  
-  
-function calculateATR(data, period = 14) {  
-    const tr = data.map((c, i) => {  
-        if (i === 0) return c.high - c.low;  
-        const prevClose = data[i - 1].close;  
-        return Math.max(c.high - c.low, Math.abs(c.high - prevClose), Math.abs(c.low - prevClose));  
-    });  
-    const out = calculateWilderEMA(tr, period);  
-    let firstValid = out.find(v => v !== null) || 1.0;  
-    for (let i = 0; i < out.length; i++) {  
-        if (out[i] === null) out[i] = firstValid;  
-    }  
-    return out;  
-}  
-  
-class StrictCausalSMCEngine {  
-    constructor() {  
-        this.resetState();  
-    }  
-  
-    resetState() {  
-        this.state = 'SETUP'; // SETUP -> ARMED -> RETEST -> CONFIRMED -> ACTIVE -> TP1 -> CLOSED / INVALIDATED  
-        this.externalSwings = [];  
-        this.internalSwings = [];  
-        this.eventLedger = [];  
-        this.protectedHigh = null;  
-        this.protectedLow = null;  
-        this.activeTrade = null;  
-        this.tradeHistory = []; // 11. Persistent record of completed trades (لا يُمسح إلا عند Full Reset)  
-          
-        // Causal Chain State  
-        this.chain = {  
-            sweepEvent: null,  
-            internalMssEvent: null,  
-            displacementEvent: null,  
-            causalZoneEvent: null,  
-            retestEvent: null,  
-            confirmEvent: null  
-        };  
-    }  
-  
-    // 10. Add Event -> causedByEventId chain  
-    pushEvent(type, barIndex, payload, causedByEventId = null) {  
-        const event = {  
-            id: this.eventLedger.length + 1,  
-            type,  
-            barIndex, // 7. Fix barIndex bug (استخدام مؤشر الصفيحة الحقيقية دائماً)  
-            causedByEventId,  
-            payload  
-        };  
-        this.eventLedger.push(event);  
-        return event;  
-    }  
-  
-    transitionTo(newState, barIndex, reason, causedByEventId) {  
-        this.state = newState;  
-        this.pushEvent('STATE_TRANSITION', barIndex, { newState, reason }, causedByEventId);  
-    }  
-  
-    // 1. Fix Protected Structure Snapshot & 2. Build True Internal Structure  
-    updateStructure(subData, currentIndex) {  
-        const extWindow = 5;  
-        const intWindow = 2;  
-          
-        if (currentIndex < extWindow * 2) return;  
-          
-        const highs = subData.map(d => d.high);  
-        const lows = subData.map(d => d.low);  
-  
-        // External Swings (Structure الرئيسية)  
-        const extCand = currentIndex - extWindow;  
-        let isExtH = true, isExtL = true;  
-        for (let j = extCand - extWindow; j <= extCand + extWindow; j++) {  
-            if (highs[j] > highs[extCand]) isExtH = false;  
-            if (lows[j] < lows[extCand]) isExtL = false;  
-        }  
-  
-        if (isExtH && !this.externalSwings.some(s => s.type === 'HIGH' && s.index === extCand)) {  
-            this.externalSwings.push({ type: 'HIGH', index: extCand, price: highs[extCand], confirmedAtIndex: currentIndex });  
-        }  
-        if (isExtL && !this.externalSwings.some(s => s.type === 'LOW' && s.index === extCand)) {  
-            this.externalSwings.push({ type: 'LOW', index: extCand, price: lows[extCand], confirmedAtIndex: currentIndex });  
-        }  
-  
-        // Internal Swings (Structure الداخلية الصريحة)  
-        const intCand = currentIndex - intWindow;  
-        let isIntH = true, isIntL = true;  
-        for (let j = intCand - intWindow; j <= intCand + intWindow; j++) {  
-            if (highs[j] > highs[intCand]) isIntH = false;  
-            if (lows[j] < lows[intCand]) isIntL = false;  
-        }  
-  
-        if (isIntH && !this.internalSwings.some(s => s.type === 'HIGH' && s.index === intCand)) {  
-            this.internalSwings.push({ type: 'HIGH', index: intCand, price: highs[intCand], confirmedAtIndex: currentIndex });  
-        }  
-        if (isIntL && !this.internalSwings.some(s => s.type === 'LOW' && s.index === intCand)) {  
-            this.internalSwings.push({ type: 'LOW', index: intCand, price: lows[intCand], confirmedAtIndex: currentIndex });  
-        }  
-  
-        // Snapshots المتاحة زمنيًا بدون Look-ahead  
-        const validExtHighs = this.externalSwings.filter(s => s.type === 'HIGH' && s.confirmedAtIndex <= currentIndex);  
-        const validExtLows = this.externalSwings.filter(s => s.type === 'LOW' && s.confirmedAtIndex <= currentIndex);  
-  
-        if (validExtHighs.length > 0) this.protectedHigh = validExtHighs[validExtHighs.length - 1];  
-        if (validExtLows.length > 0) this.protectedLow = validExtLows[validExtLows.length - 1];  
-    }  
-  
-    // 9. Separate Replay Engine (Sequential State Machine Replay)  
-    replay(data) {  
-        if (!data || data.length < 60) return null;  
-        const closedData = data.slice(0, -1);  
-        this.resetState();  
-        const atrArr = calculateATR(closedData);  
-  
-        for (let i = 20; i < closedData.length; i++) {  
-            const subData = closedData.slice(0, i + 1);  
-            const lastBar = subData[subData.length - 1];  
-            const atr = atrArr[i];  
-  
-            this.updateStructure(subData, i);  
-            this.evaluateBar(subData, i, lastBar, atr);  
-            // evaluateBar/manageTrade already call finalizeTrade() internally when a  
-            // trade closes, so the loop naturally continues scanning for the NEXT setup  
-            // instead of stopping dead at the first trade found in the window.  
-        }  
-  
-        const lastBar = closedData[closedData.length - 1];  
-        const atr = atrArr[atrArr.length - 1];  
-        return this.buildResult(lastBar, atr);  
-    }  
-  
-    // 9. Separate Live Engine (Single-tick Processing)  
-    processLiveTick(subData, currentIndex) {  
-        const lastBar = subData[subData.length - 1];  
-        const atrArr = calculateATR(subData);  
-        const atr = atrArr[atrArr.length - 1];  
-  
-        this.updateStructure(subData, currentIndex);  
-        this.evaluateBar(subData, currentIndex, lastBar, atr);  
-        return this.buildResult(lastBar, atr);  
-    }  
-  
-    // 11. النبضة الحية الحقيقية: بين إغلاق شمعة وأخرى نراقب السعر اللحظي فقط  
-    // (تحديث السعر + فحص SL/TP لحظياً) دون التلاعب بالبنية السببية (Structure/Chain)  
-    // التي يجب أن تبقى صارمة ومبنية على الشموع المُغلقة فقط (No Look-ahead).  
-    liveUpdate(formingBar, barIndex) {  
-        if (this.state === 'ACTIVE' || this.state === 'TP1') {  
-            this.manageTrade(formingBar, barIndex);  
-            if (this.state === 'CLOSED' || this.state === 'INVALIDATED') {  
-                this.finalizeTrade(barIndex);  
-            }  
-        }  
-        return this.buildResult(formingBar);  
-    }  
-  
-    evaluateBar(subData, barIndex, bar, atr) {  
-        if (this.state === 'ACTIVE' || this.state === 'TP1') {  
-            this.manageTrade(bar, barIndex);  
-            // 11. Real & Live fix: بمجرد إغلاق الصفقة (SL/TP2) يجب أن يستأنف المحرك  
-            // البحث عن فرصة جديدة بدلاً من التجمد للأبد في CLOSED/INVALIDATED.  
-            if (this.state === 'CLOSED' || this.state === 'INVALIDATED') {  
-                this.finalizeTrade(barIndex);  
-            }  
-            return;  
-        }  
-  
-        // Chain لا يجب أن يبقى معلقاً هنا الآن (finalizeTrade يعيده لـ SETUP فوراً)  
-        if (this.state === 'CLOSED' || this.state === 'INVALIDATED') return;  
-  
-        // TTL / Expiration Check  
-        if (this.chain.sweepEvent && (barIndex - this.chain.sweepEvent.barIndex > 40)) {  
-            this.pushEvent('CHAIN_EXPIRED', barIndex, { reason: 'TTL_EXCEEDED' }, this.chain.sweepEvent.id);  
-            this.resetChain();  
-            return;  
-        }  
-  
-        switch (this.state) {  
-            case 'SETUP':  
-                this.handleSetup(subData, barIndex, bar, atr);  
-                break;  
-            case 'ARMED':  
-                this.handleArmed(barIndex, bar);  
-                break;  
-            case 'RETEST':  
-                this.handleRetest(barIndex, bar);  
-                break;  
-            case 'CONFIRMED':  
-                this.handleConfirmed(barIndex, bar, atr);  
-                break;  
-        }  
-    }  
-  
-    handleSetup(subData, barIndex, bar, atr) {  
-        if (!this.protectedHigh || !this.protectedLow) return;  
-  
-        // Step 1: LIQUIDITY SWEEP  
-        if (!this.chain.sweepEvent) {  
-            if (bar.high >= this.protectedHigh.price && bar.close < this.protectedHigh.price) {  
-                this.chain.sweepEvent = this.pushEvent('LIQUIDITY_SWEEP', barIndex, {  
-                    direction: 'BEARISH_SWEEP',  
-                    sweptPrice: this.protectedHigh.price  
-                });  
-            } else if (bar.low <= this.protectedLow.price && bar.close > this.protectedLow.price) {  
-                this.chain.sweepEvent = this.pushEvent('LIQUIDITY_SWEEP', barIndex, {  
-                    direction: 'BULLISH_SWEEP',  
-                    sweptPrice: this.protectedLow.price  
-                });  
-            }  
-            return;  
-        }  
-  // Step 2 & 3: Replace current MSS with Internal MSS (3)  
-        if (this.chain.sweepEvent && !this.chain.internalMssEvent) {  
-            const sweepDir = this.chain.sweepEvent.payload.direction;  
-            const validIntSwings = this.internalSwings.filter(s => s.confirmedAtIndex <= barIndex);  
-  
-            if (sweepDir === 'BULLISH_SWEEP') {  
-                const intHighs = validIntSwings.filter(s => s.type === 'HIGH' && s.index > this.chain.sweepEvent.barIndex);  
-                if (intHighs.length > 0) {  
-                    const lastIntHigh = intHighs[intHighs.length - 1];  
-                    if (bar.close > lastIntHigh.price) {  
-                        this.chain.internalMssEvent = this.pushEvent('INTERNAL_MSS', barIndex, {  
-                            direction: 'BULLISH_INTERNAL_MSS',  
-                            brokenPrice: lastIntHigh.price  
-                        }, this.chain.sweepEvent.id);  
-                    }  
-                }  
-            } else if (sweepDir === 'BEARISH_SWEEP') {  
-                const intLows = validIntSwings.filter(s => s.type === 'LOW' && s.index > this.chain.sweepEvent.barIndex);  
-                if (intLows.length > 0) {  
-                    const lastIntLow = intLows[intLows.length - 1];  
-                    if (bar.close < lastIntLow.price) {  
-                        this.chain.internalMssEvent = this.pushEvent('INTERNAL_MSS', barIndex, {  
-                            direction: 'BEARISH_INTERNAL_MSS',  
-                            brokenPrice: lastIntLow.price  
-                        }, this.chain.sweepEvent.id);  
-                    }  
-                }  
-            }  
-            return;  
-        }  
-  
-        // Step 4: Make Displacement causally dependent on Internal MSS  
-        if (this.chain.internalMssEvent && !this.chain.displacementEvent) {  
-            const bodySize = Math.abs(bar.close - bar.open);  
-            if (bodySize >= 1.2 * atr) {  
-                this.chain.displacementEvent = this.pushEvent('DISPLACEMENT', barIndex, {  
-                    size: bodySize,  
-                    ratioToATR: (bodySize / atr).toFixed(2)  
-                }, this.chain.internalMssEvent.id);  
-  
-                // Step 5: Make OB/FVG causally dependent on Displacement  
-                this.extractCausalZones(subData, barIndex, bar);  
-  
-                if (this.chain.causalZoneEvent) {  
-                    this.transitionTo('ARMED', barIndex, 'CAUSAL_CHAIN_VALIDATED', this.chain.causalZoneEvent.id);  
-                }  
-            }  
-        }  
-    }  
 
-    // Step 5: OB/FVG extraction strictly linked to Displacement  
-    extractCausalZones(subData, barIndex, bar) {  
-        const mssDir = this.chain.internalMssEvent.payload.direction;  
-        const dispId = this.chain.displacementEvent.id;  
-          
-        let foundOb = null;  
-        let foundFvg = null;  
-  
-        // Order Block  
-        for (let i = barIndex - 1; i >= Math.max(0, barIndex - 4); i--) {  
-            const c = subData[i];  
-            if (mssDir === 'BULLISH_INTERNAL_MSS' && c.close < c.open) {  
-                foundOb = { type: 'Bullish_OB', top: c.high, bottom: c.low, index: i };  
-                break;  
-            } else if (mssDir === 'BEARISH_INTERNAL_MSS' && c.close > c.open) {  
-                foundOb = { type: 'Bearish_OB', top: c.high, bottom: c.low, index: i };  
-                break;  
-            }  
-        }  
-  
-        // Fair Value Gap  
-        const prev2 = subData[barIndex - 2];  
-        if (prev2) {  
-            if (mssDir === 'BULLISH_INTERNAL_MSS' && bar.low > prev2.high) {  
-                foundFvg = { type: 'Bullish_FVG', top: bar.low, bottom: prev2.high, ce: (bar.low + prev2.high) / 2, index: barIndex };  
-            } else if (mssDir === 'BEARISH_INTERNAL_MSS' && bar.high < prev2.low) {  
-                foundFvg = { type: 'Bearish_FVG', top: prev2.low, bottom: bar.high, ce: (prev2.low + bar.high) / 2, index: barIndex };  
-            }  
-        }  
-  
-        if (foundOb || foundFvg) {  
-            this.chain.causalZoneEvent = this.pushEvent('CAUSAL_ZONE_ESTABLISHED', barIndex, {  
-                ob: foundOb,  
-                fvg: foundFvg,  
-                zoneTop: foundOb ? foundOb.top : foundFvg.top,  
-                zoneBottom: foundOb ? foundOb.bottom : foundFvg.bottom  
-            }, dispId);  
-        }  
-    }  
-  
-    handleArmed(barIndex, bar) {  
-        const zone = this.chain.causalZoneEvent.payload;  
-        const mssDir = this.chain.internalMssEvent.payload.direction;  
-        const isBull = mssDir === 'BULLISH_INTERNAL_MSS';  
-  
-        // 8. Make Retest support OB/FVG zones (إعادة اختبار المساحة الكاملة للـ Zone)  
-        let inZone = false;  
-        if (isBull) {  
-            inZone = (bar.low <= zone.zoneTop && bar.low >= zone.zoneBottom - (zone.zoneTop - zone.zoneBottom) * 0.1);  
-        } else {  
-            inZone = (bar.high >= zone.zoneBottom && bar.high <= zone.zoneTop + (zone.zoneTop - zone.zoneBottom) * 0.1);  
-        }  
-  if (inZone) {  
-            this.chain.retestEvent = this.pushEvent('CAUSAL_ZONE_RETEST', barIndex, {  
-                touchPrice: bar.close,  
-                zoneType: zone.ob ? 'OB' : 'FVG'  
-            }, this.chain.causalZoneEvent.id);  
-  
-            this.transitionTo('RETEST', barIndex, 'ZONE_RETESTED', this.chain.retestEvent.id);  
-        }  
-    }  
-  
-    handleRetest(barIndex, bar) {  
-        const mssDir = this.chain.internalMssEvent.payload.direction;  
-        const isBull = mssDir === 'BULLISH_INTERNAL_MSS';  
-  
-        // 6. Add CONFIRMED state (شرط إغلاق انعكاسي للـ Confirmation)  
-        const confirmed = isBull ? (bar.close > bar.open) : (bar.close < bar.open);  
-  
-        if (confirmed) {  
-            this.chain.confirmEvent = this.pushEvent('SETUP_CONFIRMED', barIndex, {  
-                confirmPrice: bar.close  
-            }, this.chain.retestEvent.id);  
-  
-            this.transitionTo('CONFIRMED', barIndex, 'TRIGGER_CONFIRMED', this.chain.confirmEvent.id);  
-        }  
-    }  
-  
-    // 6. Add CONFIRMED state (التنفيذ الصريح بعد الـ Confirmation)  
-    handleConfirmed(barIndex, bar, atr) {  
-        const mssDir = this.chain.internalMssEvent.payload.direction;  
-        const isBull = mssDir === 'BULLISH_INTERNAL_MSS';  
-        const direction = isBull ? 'BUY' : 'SELL';  
-          
-        const sl = isBull ? (this.protectedLow.price - (0.1 * atr)) : (this.protectedHigh.price + (0.1 * atr));  
-        const risk = Math.abs(bar.close - sl);  
-        const tp1 = isBull ? (bar.close + (2.0 * risk)) : (bar.close - (2.0 * risk));  
-        const tp2 = isBull ? (bar.close + (3.5 * risk)) : (bar.close - (3.5 * risk));  
-  
-        this.activeTrade = { direction, entry: bar.close, sl, tp1, tp2, status: 'Active' };  
-          
-        this.pushEvent('TRADE_EXECUTED', barIndex, this.activeTrade, this.chain.confirmEvent.id);  
-        this.transitionTo('ACTIVE', barIndex, 'TRADE_ENTERED', this.chain.confirmEvent.id);  
-    }  
-    // 7. إصلاح جذري: bar.index لم يكن موجوداً على شمعة السوق (فقط time/open/high/low/close/volume)  
-    // مما كان يسجل كل حدث SL/TP بمؤشر undefined. الآن نستقبل barIndex الحقيقي من المُستدعي.  
-    manageTrade(bar, barIndex) {  
-        const tr = this.activeTrade;  
-        if (tr.direction === 'BUY') {  
-            if (bar.low <= tr.sl) {  
-                tr.status = 'SL Hit';  
-                this.transitionTo('INVALIDATED', barIndex, 'STOP_LOSS_HIT', null);  
-            } else if (bar.high >= tr.tp2) {  
-                tr.status = 'TP2 Hit';  
-                this.transitionTo('CLOSED', barIndex, 'TAKE_PROFIT_2_HIT', null);  
-            } else if (bar.high >= tr.tp1 && this.state !== 'TP1') {  
-                tr.status = 'TP1 Hit';  
-                this.transitionTo('TP1', barIndex, 'TAKE_PROFIT_1_HIT', null);  
-            }  
-        } else {  
-            if (bar.high >= tr.sl) {  
-                tr.status = 'SL Hit';  
-                this.transitionTo('INVALIDATED', barIndex, 'STOP_LOSS_HIT', null);  
-            } else if (bar.low <= tr.tp2) {  
-                tr.status = 'TP2 Hit';  
-                this.transitionTo('CLOSED', barIndex, 'TAKE_PROFIT_2_HIT', null);  
-            } else if (bar.low <= tr.tp1 && this.state !== 'TP1') {  
-                tr.status = 'TP1 Hit';  
-                this.transitionTo('TP1', barIndex, 'TAKE_PROFIT_1_HIT', null);  
-            }  
-        }  
-    }  
-  
-    // 11. تسجيل الصفقة المُغلقة في السجل (لا تُمسح عبر resetChain) ثم إعادة تهيئة  
-    // السلسلة السببية فقط (وليس كامل حالة المحرك) لاستئناف البحث عن فرصة جديدة فوراً.  
-    finalizeTrade(barIndex) {  
-        if (this.activeTrade) {  
-            this.tradeHistory.push({  
-                ...this.activeTrade,  
-                closedBarIndex: barIndex,  
-                result: this.state  
-            });  
-            this.activeTrade = null;  
-        }  
-        this.resetChain();  
-    }  
-  
-    resetChain() {  
-        this.chain = {  
-            sweepEvent: null,  
-            internalMssEvent: null,  
-            displacementEvent: null,  
-            causalZoneEvent: null,  
-            retestEvent: null,  
-            confirmEvent: null  
-        };  
-        this.state = 'SETUP';  
-    }  
-  
-    buildResult(lastBar, atr) {  
-        return {  
-            price: lastBar.close,  
-            lifecycle: this.state,  
-            dealingRange: `${this.protectedLow ? this.protectedLow.price.toFixed(1) : '--'} - ${this.protectedHigh ? this.protectedHigh.price.toFixed(1) : '--'}`,  
-            protectedHigh: this.protectedHigh ? this.protectedHigh.price : 0,  
-            protectedLow: this.protectedLow ? this.protectedLow.price : 0,  
-            direction: this.activeTrade ? this.activeTrade.direction : "NEUTRAL",  
-            decision: this.activeTrade ? `صفقة نشطة (${this.activeTrade.direction})` : `حالة النظام: ${this.state}`,  
-            sweepInfo: this.chain.sweepEvent ? `${this.chain.sweepEvent.payload.direction}` : "None",  
-            mssInfo: this.chain.internalMssEvent ? `${this.chain.internalMssEvent.payload.direction}` : "None",  
-            causalZone: this.chain.causalZoneEvent ? `Zone: [${this.chain.causalZoneEvent.payload.zoneBottom.toFixed(1)} - ${this.chain.causalZoneEvent.payload.zoneTop.toFixed(1)}]` : "None",  
-            triggerInfo: this.state,  
-            suggestedSL: this.activeTrade ? +this.activeTrade.sl.toFixed(2) : null,  
-            suggestedTP1: this.activeTrade ? +this.activeTrade.tp1.toFixed(2) : null,  
-            suggestedTP2: this.activeTrade ? +this.activeTrade.tp2.toFixed(2) : null,  
-            causalZoneObj: this.chain.causalZoneEvent ? this.chain.causalZoneEvent.payload : null,  
-            eventLedgerCount: this.eventLedger.length,  
-            tradeHistoryCount: this.tradeHistory.length,  
-            lastTrade: this.tradeHistory.length > 0 ? this.tradeHistory[this.tradeHistory.length - 1] : null  
-        };  
-    }  
-}  
-  
-global.StrictCausalSMCEngine = StrictCausalSMCEngine;  
-})(window);  
-  
-/* ==========================================================================  
-   [ربط الواجهة والرسوم البيانية]  
-   ========================================================================== */  
-let chart, candleSeries;  
-let currentTF = '1m';  
-let showOB = true;  
-let historicalData = [];  
-let engineInstance = new window.StrictCausalSMCEngine();  
-let lastResult = null;  
-let isFetching = false;  
-let processedClosedCount = 0; // كم شمعة مُغلقة تمت معالجتها سببياً بالفعل  
-let engineInitialized = false; // هل تم تشغيل Replay كامل مرة واحدة على الأقل  
-let pollTimer = null;  
-  
-function initChart() {  
-    const container = document.getElementById('chart');  
-    container.innerHTML = '';  
-    chart = LightweightCharts.createChart(container, {  
-        layout: { background: { type: 'solid', color: '#0d1322' }, textColor: '#94a3b8' },  
-        grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },  
-        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },  
-        rightPriceScale: { borderColor: '#1e293b' },  
-        timeScale: { borderColor: '#1e293b', timeVisible: true, secondsVisible: false },  
-    });  
-      
-    candleSeries = chart.addCandlestickSeries({  
-        upColor: '#34d399', downColor: '#f87171', borderVisible: false,  
-        wickUpColor: '#34d399', wickDownColor: '#f87171',  
-    });  
-  
-    window.addEventListener('resize', () => {  
-        chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });  
-    });  
-}  
-  function changeTimeframe(tf, event) {  
-    document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));  
-    if (event && event.target) event.target.classList.add('active');  
-    currentTF = tf;  
-    // إطار زمني مختلف = شموع مختلفة تماماً بمؤشرات مختلفة، لذا يجب محرك جديد + Replay كامل  
-    engineInstance = new window.StrictCausalSMCEngine();  
-    processedClosedCount = 0;  
-    engineInitialized = false;  
-    fetchBybitData();  
-}  
-  
-function toggleOB() {  
-    showOB = !showOB;  
-    document.getElementById('obToggle').classList.toggle('active', showOB);  
-    renderMarkers();  
-}  
-  
-// 12. الاتصال يجب ألا يفشل بصمت: عند فشل كل المصادر، نعرض السبب الحقيقي في مكان  
-// السعر بدل ترك "جاري التحميل..." معلّقة للأبد — هذا بالضبط ما كان يُخفي المشكلة سابقاً.  
-function setConnectionStatus(ok, error) {  
-    const badge = document.getElementById("stateBadge");  
-    const priceEl = document.getElementById("price");  
-    if (ok) {  
-        badge.style.color = '';  
-        badge.parentElement && badge.parentElement.classList; // no-op, keep default style  
-        return;  
-    }  
-    if (priceEl.innerText === 'جاري التحميل...' || priceEl.dataset.stale === '1') {  
-        priceEl.innerText = 'تعذر الاتصال بالبيانات';  
-        priceEl.dataset.stale = '1';  
-    }  
-    const reason = error && error.message ? error.message : 'خطأ غير معروف';  
-    badge.innerText = `فشل الاتصال: ${reason}`;  
-    badge.style.color = '#f87171';  
-}  
-  
-async function fetchBybitData() {  
-    // حارس بسيط لمنع تداخل الطلبات إن تأخرت الشبكة أكثر من دورة الاستطلاع  
-    if (isFetching) return;  
-    isFetching = true;  
-    try {  
-        let interval = '1';  
-        if (currentTF === '5m') interval = '5';  
-        if (currentTF === '15m') interval = '15';  
-        if (currentTF === '4h') interval = '240'; // Bybit kline interval code لـ 4 ساعات  
-  
-        // بعض الشبكات/المناطق تحجب api.bybit.com (CORS أو حجب جغرافي عبر Cloudflare)  
-        // بينما يعمل المرآة الرسمية البديلة api.bytick.com بنفس الاستجابة تماماً.  
-        // نجرب المصدر الأساسي ثم نتحول تلقائياً للمرآة عند الفشل، بدل التجمد الصامت.  
-        const endpoints = [  
-            `https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=200`,  
-            `https://api.bytick.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=200`  
-        ];  
-  
-        let json = null;  
-        let lastError = null;  
-        for (const url of endpoints) {  
-            try {  
-                const res = await fetch(url, { cache: 'no-store' });  
-                if (!res.ok) { lastError = new Error(`HTTP ${res.status}`); continue; }  
-                const candidate = await res.json();  
-                if (candidate && candidate.retCode === 0 && candidate.result && candidate.result.list) {  
-                    json = candidate;  
-                    break;  
-                } else {  
-                    lastError = new Error(candidate && candidate.retMsg ? candidate.retMsg : 'استجابة غير صالحة من المصدر');  
-                }  
-            } catch (netErr) {  
-                lastError = netErr; // فشل شبكة/CORS: جرّب المرآة التالية  
-            }  
-        }  
-  
-        if (!json) {  
-            throw lastError || new Error('تعذّر الاتصال بأي مصدر بيانات');  
-        }  
-          
-        if (json.result.list.length > 0) {  
-            historicalData = json.result.list.reverse().map(item => ({  
-                time: parseInt(item[0]) / 1000,  
-                open: parseFloat(item[1]),  
-                high: parseFloat(item[2]),  
-                low: parseFloat(item[3]),  
-                close: parseFloat(item[4]),  
-                volume: parseFloat(item[5])  
-            }));  
-        }  
-  
-        if (!historicalData || historicalData.length < 60) return;  
-        setConnectionStatus(true);  
-  
-        // آخر شمعة في المصفوفة لم تُغلق بعد (شمعة حية Live) — لا يجوز أن تُستخدم في  
-        // بناء الهيكل/السلسلة السببية (Look-ahead)، لكنها المصدر الحقيقي للسعر اللحظي.  
-        const closedData = historicalData.slice(0, -1);  
-        const formingBar = historicalData[historicalData.length - 1];  
-  
-        if (!engineInitialized || closedData.length < processedClosedCount) {  
-            // أول تحميل، أو انكماش غير متوقع في البيانات: نفّذ Replay سببي كامل مرة واحدة  
-            lastResult = engineInstance.replay(historicalData);  
-            processedClosedCount = closedData.length;  
-            engineInitialized = true;  
-        } else if (closedData.length > processedClosedCount) {  
-            // شمعة/شموع جديدة أُغلقت منذ آخر استطلاع: نُقدّم المحرك خطوة سببية واحدة  
-            // لكل شمعة جديدة بالترتيب الزمني الصحيح، دون مسح أي حالة سابقة (نظام حي حقيقي)  
-            for (let i = processedClosedCount; i < closedData.length; i++) {  
-                if (i < 20) continue; // فترة الإحماء نفسها المستخدمة في Replay  
-                const subData = closedData.slice(0, i + 1);  
-                lastResult = engineInstance.processLiveTick(subData, i);  
-            }  
-            processedClosedCount = closedData.length;  
-        } else {  
-            // لا شموع جديدة مُغلقة بعد: راقب السعر والصفقة النشطة لحظياً على الشمعة الحية  
-            lastResult = engineInstance.liveUpdate(formingBar, closedData.length - 1);  
-        }  
-  
-        if (lastResult) updateUI(lastResult, formingBar);  
-  
-        candleSeries.setData(historicalData);  
-        renderMarkers();  
-    } catch (e) {  
-        console.error("Bybit Error", e);  
-        setConnectionStatus(false, e);  
-    } finally {  
-        isFetching = false;  
-    }  
-}  
-  
-function renderMarkers() {  
-    if (!lastResult) return;  
-    let markers = [];  
-  
-    if (showOB && lastResult.causalZoneObj) {  
-        const zone = lastResult.causalZoneObj;  
-        const targetIdx = zone.ob ? zone.ob.index : zone.fvg.index;  
-        const bar = historicalData[targetIdx];  
-        if (bar) {  
-            markers.push({  
-                time: bar.time,  
-                position: 'aboveBar',  
-                color: '#38bdf8',  
-                shape: 'square',  
-                text: `Causal Zone (${zone.ob ? 'OB' : 'FVG'})`  
-            });  
-        }  
-    }  
-  
-    candleSeries.setMarkers(markers);  
-}  
-  
-function updateUI(res, formingBar) {  
-    // السعر المعروض دائماً هو سعر الشمعة الحية (اللحظية) وليس آخر شمعة مُغلقة فقط،  
-    // لتبقى الواجهة حية فعلاً بين إغلاق شمعة وأخرى.  
-    const livePrice = formingBar ? formingBar.close : res.price;  
-    const priceEl = document.getElementById("price");  
-    priceEl.innerText = livePrice.toFixed(2);  
-    priceEl.dataset.stale = '0';  
-    document.getElementById("dealingRangeVal").innerText = res.dealingRange;  
-    document.getElementById("tradeLifecycleVal").innerText = res.lifecycle;  
-    document.getElementById("stateBadge").innerText = `حالة النظام: ${res.lifecycle}`;  
-      
-    const lifecycleSteps = ['SETUP', 'ARMED', 'RETEST', 'CONFIRMED', 'ACTIVE', 'TP1', 'CLOSED', 'INVALIDATED'];  
-    lifecycleSteps.forEach((stepName, idx) => {  
-        const el = document.getElementById(`life-${idx + 1}`);  
-        if (el) {  
-            el.className = "life-step";  
-            if (res.lifecycle === stepName) {  
-                if (res.lifecycle === 'INVALIDATED' || res.lifecycle === 'CLOSED') el.classList.add('invalid');  
-                else el.classList.add('active');  
-            } else if (lifecycleSteps.indexOf(res.lifecycle) > idx) {  
-                el.classList.add('done');  
-            }  
-        }  
-    });  
-  const tag = document.getElementById("signalTag");  
-    const power = document.getElementById("signalPower");  
-      
-    tag.innerText = res.decision;  
-    power.innerText = `${res.eventLedgerCount} Links`;  
-      
-    if (res.direction === "BUY") {  
-        tag.className = "signal-tag signal-strong";  
-        power.style.color = "#34d399";  
-    } else if (res.direction === "SELL") {  
-        tag.className = "signal-tag signal-strong-sell";  
-        power.style.color = "#f87171";  
-    } else {  
-        tag.className = "signal-tag signal-wait";  
-        power.style.color = "#eab308";  
-    }  
-  
-    document.getElementById("slVal").innerText = res.suggestedSL ?? "--";  
-    document.getElementById("tp1Val").innerText = res.suggestedTP1 ?? "--";  
-    document.getElementById("tp2Val").innerText = res.suggestedTP2 ?? "--";  
-  
-    document.getElementById("structState").innerText = `H: ${res.protectedHigh ? res.protectedHigh.toFixed(1) : '--'} | L: ${res.protectedLow ? res.protectedLow.toFixed(1) : '--'}`;  
-    document.getElementById("sweepState").innerText = res.sweepInfo;  
-    document.getElementById("mssState").innerText = res.mssInfo;  
-    document.getElementById("causalZone").innerText = res.causalZone;  
-    document.getElementById("triggerState").innerText = res.triggerInfo;  
-    document.getElementById("ledgerVal").innerText = `${res.eventLedgerCount} Events`;  
-  
-    const tradeStatsEl = document.getElementById("tradeStatsVal");  
-    if (tradeStatsEl) {  
-        if (res.lastTrade) {  
-            const won = res.lastTrade.result === 'CLOSED';  
-            tradeStatsEl.innerText = `${res.tradeHistoryCount} | Last: ${res.lastTrade.direction} (${res.lastTrade.result})`;  
-            tradeStatsEl.style.color = won ? '#34d399' : '#f87171';  
-        } else {  
-            tradeStatsEl.innerText = `${res.tradeHistoryCount}`;  
-            tradeStatsEl.style.color = '#f8fafc';  
-        }  
-    }  
-}  
-  
-// 13. نفس مشكلة Bybit تماماً لكن لمكتبة الشارت: مصدر CDN واحد كان يفشل بصمت لو حُجب  
-// unpkg.com في شبكة/منطقة المستخدم، فيتحول الخطأ إلى Uncaught ReferenceError عند  
-// استدعاء initChart(). الحل: تحميل ديناميكي بعدة مرايا CDN بالترتيب، مع فشل واضح  
-// للمستخدم بدل شاشة بيضاء أو Exception غير معالج.  
-function loadScript(src) {  
-    return new Promise((resolve, reject) => {  
-        const s = document.createElement('script');  
-        s.src = src;  
-        s.onload = () => resolve(src);  
-        s.onerror = () => reject(new Error(`تعذر تحميل: ${src}`));  
-        document.head.appendChild(s);  
-    });  
-}  
-  
-async function loadLightweightCharts() {  
-    if (window.LightweightCharts) return true; // مُحمّلة مسبقاً  
-    const mirrors = [  
-        'https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js',  
-        'https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js',  
-        'https://cdnjs.cloudflare.com/ajax/libs/lightweight-charts/4.1.1/lightweight-charts.standalone.production.js'  
-    ];  
-    for (const src of mirrors) {  
-        try {  
-            await loadScript(src);  
-            if (window.LightweightCharts) return true;  
-        } catch (e) {  
-            console.error(e);  
-        }  
-    }  
-    return false;  
-}  
-  
-function showFatalError(message) {  
-    const priceEl = document.getElementById("price");  
-    const badge = document.getElementById("stateBadge");  
-    if (priceEl) priceEl.innerText = 'تعذر تحميل الشارت';  
-    if (badge) { badge.innerText = `خطأ: ${message}`; badge.style.color = '#f87171'; }  
-    const container = document.getElementById('chart');  
-    if (container) container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f87171;font-size:0.85rem;padding:12px;text-align:center;">${message}</div>`;  
-}  
-  
-async function boot() {  
-    const ok = await loadLightweightCharts();  
-    if (!ok || !window.LightweightCharts) {  
-        showFatalError('تعذر تحميل مكتبة الرسم البياني من كل المصادر المتاحة (unpkg / jsdelivr / cdnjs). تحقق من الاتصال بالإنترنت أو حجب هذه النطاقات في شبكتك.');  
-        return;  
-    }  
-    initChart();  
-    fetchBybitData();  
-    pollTimer = setInterval(fetchBybitData, 5000);  
-}  
-  
-boot();  
-</script> 
-</body>  
+<div class="chart-card">
+    <div class="chart-toolbar">
+        <div class="tf-group">
+            <button class="tf-btn active" onclick="changeTimeframe('1m', event)">1m</button>
+            <button class="tf-btn" onclick="changeTimeframe('5m', event)">5m</button>
+            <button class="tf-btn" onclick="changeTimeframe('15m', event)">15m</button>
+            <button class="tf-btn" onclick="changeTimeframe('4h', event)">4h</button>
+        </div>
+        <div class="indicator-group">
+            <button id="obToggle" class="indicator-btn active" onclick="toggleOB()">Causal Zone</button>
+        </div>
+    </div>
+    <div class="chart-container">
+        <div id="chart"></div>
+    </div>
+</div>
+<div class="note-box">
+    ⚠️ ملاحظة صادقة: هذه الأداة تعرض <b>إشارات تحليلية للمعلومات فقط</b> وليست تنفيذاً حقيقياً لأوامر عبر وسيط. TP1 الجزئي وBreak-Even والـ Trailing كلها محاكاة حسابية داخل المحرك (لا يوجد اتصال بحساب تداول فعلي). كذلك السيولة اللحظية عبر WebSocket تُحدّث السعر والصفقة النشطة فوراً، لكن بنية السوق (Structure/Sweep/MSS/Displacement) تُبنى فقط من الشموع المُغلقة (لا Look-ahead)، وتبقى بيانات OHLC غير كافية لمعرفة الترتيب الحقيقي للتيك عند لمس SL وTP في نفس الشمعة (Ambiguous Candle) — يُحل هذا بافتراض متحفظ موضّح في الكود، وليس بيقين تام.
+</div>
+<script>
+/* ==========================================================================
+   [Strict Causal SMC State Machine Engine v2 — إصلاح شامل للسلسلة السببية]
+   ========================================================================== */
+(function (global) {
+"use strict";
+
+
+
+function calculateWilderEMA(values, period) {
+    const out = new Array(values.length).fill(null);
+    if (values.length < period) return out;
+    let sum = 0;
+    for (let i = 0; i < period; i++) sum += values[i];
+    let prev = sum / period;
+    out[period - 1] = prev;
+    for (let i = period; i < values.length; i++) {
+        prev = (values[i] - prev) / period + prev;
+        out[i] = prev;
+    }
+    return out;
+}
+
+function calculateATR(data, period = 14) {
+    const tr = data.map((c, i) => {
+        if (i === 0) return c.high - c.low;
+        const prevClose = data[i - 1].close;
+        return Math.max(c.high - c.low, Math.abs(c.high - prevClose), Math.abs(c.low - prevClose));
+    });
+    const out = calculateWilderEMA(tr, period);
+    let firstValid = out.find(v => v !== null) || 1.0;
+    for (let i = 0; i < out.length; i++) {
+        if (out[i] === null) out[i] = firstValid;
+    }
+    return out;
+}
+
+function calculateAvgVolume(data, period = 20) {
+    const out = new Array(data.length).fill(null);
+    for (let i = 0; i < data.length; i++) {
+        if (i < period) { out[i] = data[i].volume || 0; continue; }
+        let s = 0;
+        for (let j = i - period; j < i; j++) s += (data[j].volume || 0);
+        out[i] = s / period;
+    }
+    return out;
+}
+
+// ============================================================
+// Structural State Engine (Strict Causal SMC) - v2
+// ============================================================
+class StrictCausalSMCEngine {
+    constructor(config) {
+        this.config = Object.assign({
+            extWindow: 5,
+            intWindow: 2,
+            eqTolAtr: 0.15,          // equal high/low clustering tolerance (x ATR)
+            sweepMinPenetrationAtr: 0.03,
+            dispBodyAtrMin: 1.2,
+            dispRangeAtrMin: 1.5,
+            dispCloseStrengthMin: 0.65, // close must be in top/bottom X% of range
+            volSpikeRatio: 1.3,
+            maxRiskAtr: 3.0,
+            beAfterTP1: true,
+            trailAtrMult: 1.5,
+            chainTtlBars: 40,
+            fvgMinGapAtr: 0.10,      // 8) minimum FVG gap size relative to ATR — rejects noise-sized gaps
+            requireTP1ForSignal: true, // only fire an actionable/notified signal if TP1 alone clears targetProfit
+            targetProfit: 0,        // user desired profit in $
+            positionSize: 1         // contracts/oz — $ per 1.0 price unit
+        }, config || {});
+        this.resetState();
+    }
+
+    resetState() {
+        this.state = 'SETUP';
+        this.externalSwings = [];   // {type,index,price,confirmedAtIndex,status:'protected'|'swept'|'broken'}
+        this.internalSwings = [];
+        this.eventLedger = [];
+        this.protectedHigh = null;
+        this.protectedLow = null;
+        this.activeTrade = null;
+        this.tradeHistory = [];
+        this.htfBias = 'NEUTRAL';
+        this.liquidityMap = { pdh: null, pdl: null, equalHighs: [], equalLows: [] };
+        this.chain = {
+            sweepEvent: null,
+            internalMssEvent: null,
+            displacementEvent: null,
+            causalZoneEvent: null,
+            retestEvent: null,
+            rejectionEvent: null,
+            triggerEvent: null,
+            confirmEvent: null
+        };
+        this.retestPhase = null; // 'WAITING_REJECTION' | 'WAITING_TRIGGER'
+        this.retestCandle = null;
+    }
+
+    pushEvent(type, barIndex, payload, causedByEventId, extra) {
+        const meta = extra || {};
+        const event = {
+            id: this.eventLedger.length + 1,
+            type,
+            barIndex,
+            timestamp: meta.timestamp ?? null,
+            direction: meta.direction ?? (this.chain.internalMssEvent ? this.chain.internalMssEvent.payload.direction : null),
+            confidence: meta.confidence ?? null,
+            invalidated: false,
+            state: this.state,
+            causedByEventId,
+            payload
+        };
+        this.eventLedger.push(event);
+        return event;
+    }
+
+    // Reconstruct full causal path (root -> event) for journaling / debugging
+    getCausalPath(eventId) {
+        const byId = new Map(this.eventLedger.map(e => [e.id, e]));
+        const path = [];
+        let cur = byId.get(eventId);
+        while (cur) {
+            path.unshift(cur);
+            cur = cur.causedByEventId ? byId.get(cur.causedByEventId) : null;
+        }
+        return path;
+    }
+
+    // Validate the active chain is a genuinely unbroken causal sequence
+    // (each link points to the previous link, indices are non-decreasing,
+    // and no link has been marked invalidated).
+    checkChainIntegrity() {
+        const links = [
+            this.chain.sweepEvent, this.chain.internalMssEvent, this.chain.displacementEvent,
+            this.chain.causalZoneEvent, this.chain.retestEvent, this.chain.rejectionEvent,
+            this.chain.triggerEvent, this.chain.confirmEvent
+        ].filter(Boolean);
+        if (links.length === 0) return { valid: true, score: 0, links: 0 };
+        let valid = true;
+        for (let i = 1; i < links.length; i++) {
+            if (links[i].causedByEventId !== links[i - 1].id) valid = false;
+            if (links[i].barIndex < links[i - 1].barIndex) valid = false;
+            if (links[i].invalidated) valid = false;
+        }
+        return { valid, score: Math.min(100, links.length * 14), links: links.length };
+    }
+
+    transitionTo(newState, barIndex, reason, causedByEventId, bar) {
+        this.state = newState;
+        this.pushEvent('STATE_TRANSITION', barIndex, { newState, reason }, causedByEventId, { timestamp: bar ? bar.time : null });
+    }
+
+    // -----------------------------------------------------------
+    // 1) Protected structure: only *unbroken* swings count as
+    //    protected liquidity. Once swept or broken they are retired
+    //    and the next-most-recent unbroken swing becomes protected.
+    // -----------------------------------------------------------
+    updateStructure(subData, currentIndex) {
+        const { extWindow, intWindow } = this.config;
+        if (currentIndex < extWindow * 2) return;
+
+        const highs = subData.map(d => d.high);
+        const lows = subData.map(d => d.low);
+        const lastBar = subData[currentIndex];
+        // Retirement below deliberately lags one bar behind the causal
+        // handlers (sweep/MSS) in evaluateBar(), which run on the CURRENT
+        // bar right after this. Otherwise this generic "close beyond swing"
+        // housekeeping would retire the very swing the causal MSS logic is
+        // about to break *before* it gets a chance to attribute that break
+        // to a proper INTERNAL_MSS event — silently stealing its own signal.
+        const retireBar = currentIndex > 0 ? subData[currentIndex - 1] : null;
+
+        const extCand = currentIndex - extWindow;
+        let isExtH = true, isExtL = true;
+        for (let j = extCand - extWindow; j <= extCand + extWindow; j++) {
+            if (highs[j] > highs[extCand]) isExtH = false;
+            if (lows[j] < lows[extCand]) isExtL = false;
+        }
+        if (isExtH && !this.externalSwings.some(s => s.type === 'HIGH' && s.index === extCand)) {
+            this.externalSwings.push({ type: 'HIGH', index: extCand, price: highs[extCand], confirmedAtIndex: currentIndex, status: 'protected' });
+        }
+        if (isExtL && !this.externalSwings.some(s => s.type === 'LOW' && s.index === extCand)) {
+            this.externalSwings.push({ type: 'LOW', index: extCand, price: lows[extCand], confirmedAtIndex: currentIndex, status: 'protected' });
+        }
+
+        const intCand = currentIndex - intWindow;
+        let isIntH = true, isIntL = true;
+        for (let j = intCand - intWindow; j <= intCand + intWindow; j++) {
+            if (highs[j] > highs[intCand]) isIntH = false;
+            if (lows[j] < lows[intCand]) isIntL = false;
+        }
+        if (isIntH && !this.internalSwings.some(s => s.type === 'HIGH' && s.index === intCand)) {
+            this.internalSwings.push({ type: 'HIGH', index: intCand, price: highs[intCand], confirmedAtIndex: currentIndex, status: 'protected' });
+        }
+        if (isIntL && !this.internalSwings.some(s => s.type === 'LOW' && s.index === intCand)) {
+            this.internalSwings.push({ type: 'LOW', index: intCand, price: lows[intCand], confirmedAtIndex: currentIndex, status: 'protected' });
+        }
+
+        // Retire swings that price has since closed through (they can no
+        // longer act as protected liquidity — this is what makes the
+        // "last swing" a true *protected structure* point instead of an
+        // arbitrary label on whatever fractal formed most recently).
+        if (retireBar) {
+            for (const s of this.externalSwings) {
+                if (s.status !== 'protected' || s.confirmedAtIndex > currentIndex - 1) continue;
+                if (s.type === 'HIGH' && retireBar.close > s.price) s.status = 'broken';
+                if (s.type === 'LOW' && retireBar.close < s.price) s.status = 'broken';
+            }
+            for (const s of this.internalSwings) {
+                if (s.status !== 'protected' || s.confirmedAtIndex > currentIndex - 1) continue;
+                if (s.type === 'HIGH' && retireBar.close > s.price) s.status = 'broken';
+                if (s.type === 'LOW' && retireBar.close < s.price) s.status = 'broken';
+            }
+        }
+
+        const protHighs = this.externalSwings.filter(s => s.type === 'HIGH' && s.status === 'protected' && s.confirmedAtIndex <= currentIndex);
+        const protLows = this.externalSwings.filter(s => s.type === 'LOW' && s.status === 'protected' && s.confirmedAtIndex <= currentIndex);
+        this.protectedHigh = protHighs.length ? protHighs[protHighs.length - 1] : null;
+        this.protectedLow = protLows.length ? protLows[protLows.length - 1] : null;
+
+        this.updateLiquidityMap(subData, currentIndex, protHighs, protLows);
+    }
+
+    // 13) Fuller liquidity map: PDH/PDL + equal highs/lows clustering
+    updateLiquidityMap(subData, currentIndex, protHighs, protLows) {
+        const atr = this._lastAtr || 1;
+        const tol = atr * this.config.eqTolAtr;
+
+        const cluster = (arr) => {
+            const out = [];
+            const sorted = [...arr].sort((a, b) => a.price - b.price);
+            for (const s of sorted) {
+                const bucket = out.find(b => Math.abs(b.price - s.price) <= tol);
+                if (bucket) { bucket.count++; bucket.price = (bucket.price * (bucket.count - 1) + s.price) / bucket.count; }
+                else out.push({ price: s.price, count: 1 });
+            }
+            return out.filter(b => b.count >= 2);
+        };
+        this.liquidityMap.equalHighs = cluster(protHighs);
+        this.liquidityMap.equalLows = cluster(protLows);
+
+        // Previous-day high/low from bar timestamps (UTC day buckets)
+        if (subData[currentIndex] && subData[currentIndex].time) {
+            const dayOf = (t) => Math.floor(t / 86400);
+            const todayD = dayOf(subData[currentIndex].time);
+            let ph = -Infinity, pl = Infinity, found = false;
+            for (let i = 0; i <= currentIndex; i++) {
+                const b = subData[i];
+                if (dayOf(b.time) === todayD - 1) { found = true; if (b.high > ph) ph = b.high; if (b.low < pl) pl = b.low; }
+            }
+            if (found) { this.liquidityMap.pdh = ph; this.liquidityMap.pdl = pl; }
+        }
+    }
+
+    // 11) Real (lightweight) multi-timeframe bias: resample the closed
+    // series into higher-timeframe bars and read its own swing structure,
+    // instead of pretending a timeframe *selector* is MTF analysis.
+    updateHtfBias(subData, currentIndex, groupSize) {
+        const bars = subData.slice(0, currentIndex + 1);
+        if (bars.length < groupSize * 6) { this.htfBias = 'NEUTRAL'; return; }
+        const htf = [];
+        for (let i = 0; i + groupSize <= bars.length; i += groupSize) {
+            const chunk = bars.slice(i, i + groupSize);
+            htf.push({
+                high: Math.max(...chunk.map(c => c.high)),
+                low: Math.min(...chunk.map(c => c.low)),
+                close: chunk[chunk.length - 1].close
+            });
+        }
+        if (htf.length < 6) { this.htfBias = 'NEUTRAL'; return; }
+        const w = 2;
+        const swings = [];
+        for (let i = w; i < htf.length - w; i++) {
+            let isH = true, isL = true;
+            for (let j = i - w; j <= i + w; j++) {
+                if (htf[j].high > htf[i].high) isH = false;
+                if (htf[j].low < htf[i].low) isL = false;
+            }
+            if (isH) swings.push({ type: 'HIGH', price: htf[i].high, i });
+            if (isL) swings.push({ type: 'LOW', price: htf[i].low, i });
+        }
+        const highs = swings.filter(s => s.type === 'HIGH').slice(-2);
+        const lows = swings.filter(s => s.type === 'LOW').slice(-2);
+        let bias = 'NEUTRAL';
+        if (highs.length === 2 && lows.length === 2) {
+            const higherHigh = highs[1].price > highs[0].price;
+            const higherLow = lows[1].price > lows[0].price;
+            if (higherHigh && higherLow) bias = 'BULLISH';
+            else if (!higherHigh && !higherLow) bias = 'BEARISH';
+        }
+        this.htfBias = bias;
+    }
+
+    replay(data, groupSize) {
+        if (!data || data.length < 60) return null;
+        const closedData = data.slice(0, -1);
+        this.resetState();
+        const atrArr = calculateATR(closedData);
+        const volArr = calculateAvgVolume(closedData);
+
+        for (let i = 20; i < closedData.length; i++) {
+            const subData = closedData.slice(0, i + 1);
+            const lastBar = subData[subData.length - 1];
+            const atr = atrArr[i];
+            this._lastAtr = atr;
+            this._avgVol = volArr[i];
+
+            this.updateStructure(subData, i);
+            if (i % 5 === 0) this.updateHtfBias(subData, i, groupSize || 15);
+            this.evaluateBar(subData, i, lastBar, atr);
+        }
+
+        const lastBar = closedData[closedData.length - 1];
+        const atr = atrArr[atrArr.length - 1];
+        return this.buildResult(lastBar, atr);
+    }
+
+    processLiveTick(subData, currentIndex, groupSize) {
+        const lastBar = subData[subData.length - 1];
+        const atrArr = calculateATR(subData);
+        const atr = atrArr[atrArr.length - 1];
+        this._lastAtr = atr;
+        this._avgVol = calculateAvgVolume(subData)[subData.length - 1];
+
+        this.updateStructure(subData, currentIndex);
+        this.updateHtfBias(subData, currentIndex, groupSize || 15);
+        this.evaluateBar(subData, currentIndex, lastBar, atr);
+        return this.buildResult(lastBar, atr);
+    }
+
+    liveUpdate(formingBar, barIndex) {
+        if (this.state === 'ACTIVE' || this.state === 'TP1') {
+            this.manageTrade(formingBar, barIndex);
+            if (this.state === 'CLOSED' || this.state === 'INVALIDATED') {
+                this.finalizeTrade(barIndex);
+            }
+        }
+        return this.buildResult(formingBar);
+    }
+
+    evaluateBar(subData, barIndex, bar, atr) {
+        if (this.state === 'ACTIVE' || this.state === 'TP1') {
+            this.manageTrade(bar, barIndex);
+            if (this.state === 'CLOSED' || this.state === 'INVALIDATED') {
+                this.finalizeTrade(barIndex);
+            }
+            return;
+        }
+        if (this.state === 'CLOSED' || this.state === 'INVALIDATED') return;
+
+        if (this.chain.sweepEvent && (barIndex - this.chain.sweepEvent.barIndex > this.config.chainTtlBars)) {
+            this.pushEvent('CHAIN_EXPIRED', barIndex, { reason: 'TTL_EXCEEDED' }, this.chain.sweepEvent.id, { timestamp: bar.time });
+            this.resetChain();
+            return;
+        }
+
+        switch (this.state) {
+            case 'SETUP': this.handleSetup(subData, barIndex, bar, atr); break;
+            case 'ARMED': this.handleArmed(barIndex, bar); break;
+            case 'RETEST': this.handleRetest(barIndex, bar); break;
+            case 'CONFIRMED': this.handleConfirmed(barIndex, bar, atr); break;
+        }
+    }
+         // -----------------------------------------------------------
+    // 3) Liquidity sweep with strength classification + minimum
+    //    penetration/rejection requirement (not just "wick above,
+    //    close below").
+    // -----------------------------------------------------------
+    handleSetup(subData, barIndex, bar, atr) {
+        if (!this.protectedHigh || !this.protectedLow) return;
+
+        if (!this.chain.sweepEvent) {
+            const minPen = atr * this.config.sweepMinPenetrationAtr;
+            const vol = bar.volume || 0;
+            const volSpike = this._avgVol ? vol / this._avgVol : 1;
+
+            if (bar.high >= this.protectedHigh.price + minPen && bar.close < this.protectedHigh.price) {
+                const wick = bar.high - Math.max(bar.close, bar.open);
+                const range = Math.max(bar.high - bar.low, 1e-9);
+                const strength = Math.min(100, Math.round(((wick / range) * 60 + Math.min(volSpike, 2) * 20)));
+                this.protectedHigh.status = 'swept';
+                this.chain.sweepEvent = this.pushEvent('LIQUIDITY_SWEEP', barIndex, {
+                    direction: 'BEARISH_SWEEP', sweptPrice: this.protectedHigh.price,
+                    strength, volSpike: +volSpike.toFixed(2),
+                    label: strength >= 65 ? 'STRONG' : strength >= 35 ? 'MEDIUM' : 'WEAK'
+                }, null, { timestamp: bar.time, direction: 'BEARISH_SWEEP', confidence: strength });
+            } else if (bar.low <= this.protectedLow.price - minPen && bar.close > this.protectedLow.price) {
+                const wick = Math.min(bar.close, bar.open) - bar.low;
+                const range = Math.max(bar.high - bar.low, 1e-9);
+                const strength = Math.min(100, Math.round(((wick / range) * 60 + Math.min(volSpike, 2) * 20)));
+                this.protectedLow.status = 'swept';
+                this.chain.sweepEvent = this.pushEvent('LIQUIDITY_SWEEP', barIndex, {
+                    direction: 'BULLISH_SWEEP', sweptPrice: this.protectedLow.price,
+                    strength, volSpike: +volSpike.toFixed(2),
+                    label: strength >= 65 ? 'STRONG' : strength >= 35 ? 'MEDIUM' : 'WEAK'
+                }, null, { timestamp: bar.time, direction: 'BULLISH_SWEEP', confidence: strength });
+            }
+            return;
+        }
+
+        // -----------------------------------------------------------
+        // 2) Internal MSS tied to real protected *internal* structure:
+        //    only an internal swing that is still 'protected' (i.e. not
+        //    already broken by something else in between) can be broken
+        //    here, and it must sit after the sweep bar.
+        // -----------------------------------------------------------
+        if (this.chain.sweepEvent && !this.chain.internalMssEvent) {
+            const sweepDir = this.chain.sweepEvent.payload.direction;
+            const validIntSwings = this.internalSwings.filter(s => s.confirmedAtIndex <= barIndex && s.index > this.chain.sweepEvent.barIndex);
+
+            if (sweepDir === 'BULLISH_SWEEP') {
+                const intHighs = validIntSwings.filter(s => s.type === 'HIGH' && s.status === 'protected');
+                if (intHighs.length > 0) {
+                    const target = intHighs[intHighs.length - 1];
+                    if (bar.close > target.price) {
+                        target.status = 'broken';
+                        this.chain.internalMssEvent = this.pushEvent('INTERNAL_MSS', barIndex, {
+                            direction: 'BULLISH_INTERNAL_MSS', brokenPrice: target.price, brokenSwingIndex: target.index
+                        }, this.chain.sweepEvent.id, { timestamp: bar.time, direction: 'BULLISH_INTERNAL_MSS' });
+                    }
+                }
+            } else if (sweepDir === 'BEARISH_SWEEP') {
+                const intLows = validIntSwings.filter(s => s.type === 'LOW' && s.status === 'protected');
+                if (intLows.length > 0) {
+                    const target = intLows[intLows.length - 1];
+                    if (bar.close < target.price) {
+                        target.status = 'broken';
+                        this.chain.internalMssEvent = this.pushEvent('INTERNAL_MSS', barIndex, {
+                            direction: 'BEARISH_INTERNAL_MSS', brokenPrice: target.price, brokenSwingIndex: target.index
+                        }, this.chain.sweepEvent.id, { timestamp: bar.time, direction: 'BEARISH_INTERNAL_MSS' });
+                    }
+                }
+            }
+            // Deliberately no early return here: the same candle that
+            // breaks internal structure is very often the displacement
+            // leg itself, so we let the freshly-created MSS event fall
+            // straight through into the displacement check below on the
+            // same bar instead of forcing an artificial one-bar lag.
+        }
+
+        // -----------------------------------------------------------
+        // 4) Displacement: body/ATR AND range expansion AND a strong
+        //    directional close AND (bonus) volume expansion — a single
+        //    body>=1.2*ATR check is not sufficient evidence of real
+        //    displacement on its own.
+        // -----------------------------------------------------------
+        if (this.chain.internalMssEvent && !this.chain.displacementEvent) {
+            const bodySize = Math.abs(bar.close - bar.open);
+            const range = Math.max(bar.high - bar.low, 1e-9);
+            const isBull = this.chain.internalMssEvent.payload.direction === 'BULLISH_INTERNAL_MSS';
+            const closePos = isBull ? (bar.close - bar.low) / range : (bar.high - bar.close) / range;
+            const vol = bar.volume || 0;
+            const volSpike = this._avgVol ? vol / this._avgVol : 1;
+
+            const bodyOk = bodySize >= this.config.dispBodyAtrMin * atr;
+            const rangeOk = range >= this.config.dispRangeAtrMin * atr;
+            const closeOk = closePos >= this.config.dispCloseStrengthMin;
+
+            if (bodyOk && rangeOk && closeOk) {
+                let confidence = 50;
+                confidence += Math.min(25, ((bodySize / atr) - this.config.dispBodyAtrMin) * 15);
+                confidence += Math.min(15, (closePos - this.config.dispCloseStrengthMin) * 40);
+                if (volSpike >= this.config.volSpikeRatio) confidence += 10;
+                confidence = Math.max(0, Math.min(100, Math.round(confidence)));
+
+                this.chain.displacementEvent = this.pushEvent('DISPLACEMENT', barIndex, {
+                    size: bodySize, ratioToATR: +(bodySize / atr).toFixed(2),
+                    range: +(range / atr).toFixed(2), closeStrength: +closePos.toFixed(2),
+                    volSpike: +volSpike.toFixed(2)
+                }, this.chain.internalMssEvent.id, { timestamp: bar.time, confidence });
+
+                this.extractCausalZones(subData, barIndex, bar, atr);
+
+                if (this.chain.causalZoneEvent) {
+                    this.transitionTo('ARMED', barIndex, 'CAUSAL_CHAIN_VALIDATED', this.chain.causalZoneEvent.id, bar);
+                }
+            }
+        }
+    }
+
+    // -----------------------------------------------------------
+    // 5) OB: strictly the last opposite-colour candle immediately
+    //    preceding the start of the impulsive leg that displacement
+    //    belongs to (walk back through same-direction momentum
+    //    candles first, then take the flip candle right before it) —
+    //    not "any reversal candle within the last 4 bars".
+    // 6) FVG: genuine 3-candle gap where the middle candle is part of
+    //    the same directional impulse (not just any 3 bars around the
+    //    displacement bar).
+    // 7) Confluence: merge OB+FVG into one causal zone when they
+    //    overlap, and record a confluence flag/score either way,
+    //    instead of arbitrarily picking one over the other.
+    // 12) Premium/Discount gate: only accept the zone if it sits in
+    //     discount (bullish) or premium (bearish) of the current
+    //     dealing range.
+    // -----------------------------------------------------------
+    extractCausalZones(subData, barIndex, bar, atr) {
+        const mssDir = this.chain.internalMssEvent.payload.direction;
+        const dispId = this.chain.displacementEvent.id;
+        const isBull = mssDir === 'BULLISH_INTERNAL_MSS';
+
+        // Walk back through the contiguous impulsive leg to find its origin
+        let legStart = barIndex;
+        for (let i = barIndex - 1; i >= Math.max(0, barIndex - 6); i--) {
+            const c = subData[i];
+            const sameDir = isBull ? c.close > c.open : c.close < c.open;
+            if (sameDir) legStart = i; else break;
+        }
+        let foundOb = null;
+        const originIdx = legStart - 1;
+        if (originIdx >= 0) {
+            const c = subData[originIdx];
+            const isOpposite = isBull ? c.close < c.open : c.close > c.open;
+            if (isOpposite) {
+                foundOb = { type: isBull ? 'Bullish_OB' : 'Bearish_OB', top: c.high, bottom: c.low, index: originIdx, legStart };
+            }
+        }
+
+        // 3-candle FVG: c1 (i-2), c2 (i-1, must be part of the impulse),
+        // c3 (current bar). Gap = c1 vs c3, validated by c2's direction.
+        let foundFvg = null;
+        const c1 = subData[barIndex - 2];
+        const c2 = subData[barIndex - 1];
+        const minGap = (atr || 0) * this.config.fvgMinGapAtr;
+        if (c1 && c2) {
+            const c2SameDir = isBull ? c2.close > c2.open : c2.close < c2.open;
+            if (c2SameDir && isBull && bar.low > c1.high && (bar.low - c1.high) >= minGap) {
+                foundFvg = { type: 'Bullish_FVG', top: bar.low, bottom: c1.high, ce: (bar.low + c1.high) / 2, index: barIndex, gapAtr: +((bar.low - c1.high) / (atr || 1)).toFixed(2) };
+            } else if (c2SameDir && !isBull && bar.high < c1.low && (c1.low - bar.high) >= minGap) {
+                foundFvg = { type: 'Bearish_FVG', top: c1.low, bottom: bar.high, ce: (c1.low + bar.high) / 2, index: barIndex, gapAtr: +((c1.low - bar.high) / (atr || 1)).toFixed(2) };
+            }
+            // Gap exists but is smaller than fvgMinGapAtr*ATR → treated as noise,
+            // deliberately dropped rather than registered as a valid FVG.
+        }
+
+        if (!foundOb && !foundFvg) return;
+
+        let zoneTop, zoneBottom, confluence = false;
+        if (foundOb && foundFvg) {
+            const overlapTop = Math.min(foundOb.top, foundFvg.top);
+            const overlapBottom = Math.max(foundOb.bottom, foundFvg.bottom);
+            if (overlapTop > overlapBottom) {
+                zoneTop = overlapTop; zoneBottom = overlapBottom; confluence = true;
+            } else {
+                zoneTop = Math.max(foundOb.top, foundFvg.top);
+                zoneBottom = Math.min(foundOb.bottom, foundFvg.bottom);
+                confluence = false;
+            }
+        } else if (foundOb) {
+            zoneTop = foundOb.top; zoneBottom = foundOb.bottom;
+        } else {
+            zoneTop = foundFvg.top; zoneBottom = foundFvg.bottom;
+        }
+
+        // Premium/Discount filter against current dealing range
+        if (this.protectedHigh && this.protectedLow) {
+            const eq = (this.protectedHigh.price + this.protectedLow.price) / 2;
+            const mid = (zoneTop + zoneBottom) / 2;
+            const inDiscount = mid <= eq;
+            const inPremium = mid >= eq;
+            if ((isBull && !inDiscount) || (!isBull && !inPremium)) {
+                // Zone sits on the wrong side of equilibrium — reject silently,
+                // chain stays at SETUP-level displacement without arming.
+                return;
+            }
+        }
+
+        this.chain.causalZoneEvent = this.pushEvent('CAUSAL_ZONE_ESTABLISHED', barIndex, {
+            ob: foundOb, fvg: foundFvg, zoneTop, zoneBottom, confluence,
+            consumed: false,
+            quality: confluence ? 'HIGH (OB+FVG confluence)' : (foundOb && foundFvg ? 'MEDIUM (OB+FVG, no overlap)' : (foundOb ? 'MEDIUM (OB only)' : 'LOW (FVG only)'))
+        }, dispId, { timestamp: bar.time });
+        }
+         // -----------------------------------------------------------
+    // 8/9/10) Retest is now a 3-step causal sequence:
+    //   tap -> rejection candle -> internal trigger (micro-BOS of the
+    //   rejection candle's extreme) — instead of "price touched zone".
+    // 24/25) Zone invalidation + single-use enforcement.
+    // -----------------------------------------------------------
+    handleArmed(barIndex, bar) {
+        const zone = this.chain.causalZoneEvent.payload;
+        if (zone.consumed) { this.resetChain(); return; }
+        const mssDir = this.chain.internalMssEvent.payload.direction;
+        const isBull = mssDir === 'BULLISH_INTERNAL_MSS';
+
+        // Invalidate the setup if price closes back through the zone
+        // against the intended direction before it's ever retested.
+        if (isBull && bar.close < zone.zoneBottom) { this.resetChain(); return; }
+        if (!isBull && bar.close > zone.zoneTop) { this.resetChain(); return; }
+
+        const buffer = (zone.zoneTop - zone.zoneBottom) * 0.1;
+        let inZone = isBull
+            ? (bar.low <= zone.zoneTop && bar.low >= zone.zoneBottom - buffer)
+            : (bar.high >= zone.zoneBottom && bar.high <= zone.zoneTop + buffer);
+
+        if (inZone) {
+            zone.consumed = true;
+            this.chain.retestEvent = this.pushEvent('CAUSAL_ZONE_RETEST', barIndex, {
+                touchPrice: bar.close, zoneType: zone.ob ? (zone.fvg ? 'OB+FVG' : 'OB') : 'FVG'
+            }, this.chain.causalZoneEvent.id, { timestamp: bar.time });
+            this.retestPhase = 'WAITING_REJECTION';
+            this.transitionTo('RETEST', barIndex, 'ZONE_RETESTED', this.chain.retestEvent.id, bar);
+        }
+    }
+
+    handleRetest(barIndex, bar) {
+        const zone = this.chain.causalZoneEvent.payload;
+        const mssDir = this.chain.internalMssEvent.payload.direction;
+        const isBull = mssDir === 'BULLISH_INTERNAL_MSS';
+
+        // Hard invalidation: a close clean through the zone kills the setup.
+        if (isBull && bar.close < zone.zoneBottom) { this.resetChain(); return; }
+        if (!isBull && bar.close > zone.zoneTop) { this.resetChain(); return; }
+
+        if (this.retestPhase === 'WAITING_REJECTION') {
+            const range = Math.max(bar.high - bar.low, 1e-9);
+            const closePos = isBull ? (bar.close - bar.low) / range : (bar.high - bar.close) / range;
+            const closedFavorably = isBull ? bar.close > bar.open : bar.close < bar.open;
+            // Rejection candle = closes back in the trade direction AND
+            // closes in the strong half of its own range (wick rejection).
+            if (closedFavorably && closePos >= 0.55) {
+                this.retestCandle = { high: bar.high, low: bar.low, index: barIndex };
+                this.chain.rejectionEvent = this.pushEvent('ZONE_REJECTION', barIndex, {
+                    closeStrength: +closePos.toFixed(2)
+                }, this.chain.retestEvent.id, { timestamp: bar.time });
+                this.retestPhase = 'WAITING_TRIGGER';
+            }
+            return;
+        }
+
+        if (this.retestPhase === 'WAITING_TRIGGER') {
+            // Internal trigger: price must actually break the rejection
+            // candle's extreme in our favour — the "reaction" leg — before
+            // we call the setup confirmed. A same-coloured candle alone is
+            // not proof the market reacted; a fresh micro-BOS is.
+            const triggered = isBull ? bar.close > this.retestCandle.high : bar.close < this.retestCandle.low;
+            if (triggered) {
+                this.chain.triggerEvent = this.pushEvent('INTERNAL_TRIGGER', barIndex, {
+                    triggerPrice: bar.close
+                }, this.chain.rejectionEvent.id, { timestamp: bar.time });
+
+                this.chain.confirmEvent = this.pushEvent('SETUP_CONFIRMED', barIndex, {
+                    confirmPrice: bar.close
+                }, this.chain.triggerEvent.id, { timestamp: bar.time });
+
+                this.transitionTo('CONFIRMED', barIndex, 'TRIGGER_CONFIRMED', this.chain.confirmEvent.id, bar);
+            } else if ((barIndex - this.chain.rejectionEvent.barIndex) > 8) {
+                // Reaction never materialised — don't let the chain hang forever.
+                this.resetChain();
+            }
+        }
+    }
+
+    // -----------------------------------------------------------
+    // 15) SL anchored to the causal zone edge (with ATR buffer) and
+    //     capped by maxRiskAtr, instead of the (sometimes very distant)
+    //     external protected level.
+    // 26) Confidence score aggregated from the whole causal chain.
+    // 27) Setup Valid (ARMED) vs Entry Trigger (CONFIRMED->ACTIVE) stay
+    //     strictly separate states; execution only happens here.
+    // -----------------------------------------------------------
+    handleConfirmed(barIndex, bar, atr) {
+        const mssDir = this.chain.internalMssEvent.payload.direction;
+        const isBull = mssDir === 'BULLISH_INTERNAL_MSS';
+        const direction = isBull ? 'BUY' : 'SELL';
+        const zone = this.chain.causalZoneEvent.payload;
+
+        const zoneEdge = isBull ? zone.zoneBottom : zone.zoneTop;
+        const sl = isBull ? (zoneEdge - 0.15 * atr) : (zoneEdge + 0.15 * atr);
+        const risk = Math.abs(bar.close - sl);
+
+        if (risk > this.config.maxRiskAtr * atr || risk <= 0) {
+            // Risk too wide relative to volatility — reject the entry
+            // rather than take an oversized stop.
+            this.pushEvent('ENTRY_REJECTED', barIndex, { reason: 'RISK_TOO_WIDE', riskAtr: +(risk / atr).toFixed(2) }, this.chain.confirmEvent.id, { timestamp: bar.time });
+            this.resetChain();
+            return;
+        }
+
+        // 11/12) HTF alignment + Premium/Discount are folded into the
+        // confidence score rather than being silent hard blocks, so the
+        // user still sees *why* a signal is weak instead of it vanishing.
+        const chainCheck = this.checkChainIntegrity();
+        const htfAligned = (isBull && this.htfBias !== 'BEARISH') || (!isBull && this.htfBias !== 'BULLISH');
+        let confidence = 40;
+        confidence += this.chain.sweepEvent.payload.strength * 0.15;
+        confidence += (this.chain.displacementEvent.confidence || 50) * 0.15;
+        confidence += zone.confluence ? 15 : 5;
+        confidence += htfAligned ? 15 : -10;
+        confidence += chainCheck.valid ? 10 : -20;
+        confidence = Math.max(0, Math.min(100, Math.round(confidence)));
+
+        const tp1 = isBull ? (bar.close + 2.0 * risk) : (bar.close - 2.0 * risk);
+        const tp2 = isBull ? (bar.close + 3.5 * risk) : (bar.close - 3.5 * risk);
+
+        // 30) Fold the user's desired dollar profit + position size into
+        // whether/how the signal is flagged as actionable.
+        const dist1 = Math.abs(tp1 - bar.close), dist2 = Math.abs(tp2 - bar.close);
+        const posSize = this.config.positionSize || 1;
+        const projectedProfitTP1 = +(dist1 * posSize).toFixed(2);
+        const projectedProfitTP2 = +(dist2 * posSize).toFixed(2);
+        const target = this.config.targetProfit || 0;
+        const meetsTargetAtTP1 = target > 0 ? projectedProfitTP1 >= target : true;
+        const meetsTargetAtTP2 = target > 0 ? projectedProfitTP2 >= target : true;
+
+        this.activeTrade = {
+            direction, entry: bar.close, sl, tp1, tp2, status: 'Active',
+            confidence, htfBias: this.htfBias, htfAligned,
+            projectedProfitTP1, projectedProfitTP2, meetsTargetAtTP1, meetsTargetAtTP2,
+            entryBarIndex: barIndex, partialClosed: false, beApplied: false
+        };
+
+        this.pushEvent('TRADE_EXECUTED', barIndex, this.activeTrade, this.chain.confirmEvent.id, { timestamp: bar.time, direction, confidence });
+        this.transitionTo('ACTIVE', barIndex, 'TRADE_ENTERED', this.chain.confirmEvent.id, bar);
+    }
+
+    // -----------------------------------------------------------
+    // 16/17/18/28) Trade management:
+    //  - TP1 = simulated partial close (books partial P/L, halves the
+    //    remaining size) + break-even stop, since a static page has no
+    //    broker connection to actually split a live order.
+    //  - After BE, a simple ATR trail manages the runner toward TP2.
+    //  - Same-candle SL/TP ambiguity: conservative worst-case ordering
+    //    based on which level the open price sits closer to (documented
+    //    limitation of OHLC-only data — true tick order is unknowable).
+    // -----------------------------------------------------------
+    manageTrade(bar, barIndex) {
+        const tr = this.activeTrade;
+        const hitSL = tr.direction === 'BUY' ? bar.low <= tr.sl : bar.high >= tr.sl;
+        const hitTP2 = tr.direction === 'BUY' ? bar.high >= tr.tp2 : bar.low <= tr.tp2;
+        const hitTP1 = tr.direction === 'BUY' ? bar.high >= tr.tp1 : bar.low <= tr.tp1;
+
+        if (hitSL && hitTP2) {
+            // Ambiguous candle: SL and TP2 both within range. Resolve
+            // conservatively by which is nearer to the open (best guess
+            // at what likely traded first intrabar).
+            const distSL = Math.abs(bar.open - tr.sl);
+            const distTP = Math.abs(bar.open - tr.tp2);
+            if (distSL <= distTP) {
+                tr.status = 'SL Hit'; tr.ambiguousCandle = true;
+                this.transitionTo('INVALIDATED', barIndex, 'STOP_LOSS_HIT_AMBIGUOUS', null);
+            } else {
+                tr.status = 'TP2 Hit'; tr.ambiguousCandle = true;
+                this.transitionTo('CLOSED', barIndex, 'TAKE_PROFIT_2_HIT_AMBIGUOUS', null);
+            }
+            return;
+        }
+
+        if (hitSL) {
+            tr.status = tr.beApplied ? 'BE Hit' : 'SL Hit';
+            this.transitionTo('INVALIDATED', barIndex, tr.beApplied ? 'BREAKEVEN_HIT' : 'STOP_LOSS_HIT', null);
+            return;
+        }
+        if (hitTP2) {
+            tr.status = 'TP2 Hit';
+            this.transitionTo('CLOSED', barIndex, 'TAKE_PROFIT_2_HIT', null);
+            return;
+        }
+        if (hitTP1 && !tr.partialClosed) {
+            tr.partialClosed = true;
+            tr.status = 'TP1 Hit (50% closed)';
+            if (this.config.beAfterTP1) { tr.sl = tr.entry; tr.beApplied = true; }
+            this.pushEvent('PARTIAL_CLOSE', barIndex, { closedFraction: 0.5, price: tr.tp1 }, null, { timestamp: bar.time });
+            this.transitionTo('TP1', barIndex, 'TAKE_PROFIT_1_HIT', null);
+            return;
+        }
+        if (this.state === 'TP1') {
+            // Simple ATR trail on the runner after break-even.
+            const atr = this._lastAtr || 0;
+            if (atr > 0) {
+                if (tr.direction === 'BUY') {
+                    const newSl = bar.close - this.config.trailAtrMult * atr;
+                    if (newSl > tr.sl) tr.sl = newSl;
+                } else {
+                    const newSl = bar.close + this.config.trailAtrMult * atr;
+                    if (newSl < tr.sl) tr.sl = newSl;
+                }
+            }
+        }
+    }
+
+    finalizeTrade(barIndex) {
+        if (this.activeTrade) {
+            this.tradeHistory.push({ ...this.activeTrade, closedBarIndex: barIndex, result: this.state });
+            this.activeTrade = null;
+        }
+        this.resetChain();
+    }
+
+    resetChain() {
+        this.chain = {
+            sweepEvent: null, internalMssEvent: null, displacementEvent: null,
+            causalZoneEvent: null, retestEvent: null, rejectionEvent: null,
+            triggerEvent: null, confirmEvent: null
+        };
+        this.retestPhase = null;
+        this.retestCandle = null;
+        this.state = 'SETUP';
+    }
+
+    buildResult(lastBar, atr) {
+        const chainCheck = this.checkChainIntegrity();
+        const eq = (this.protectedHigh && this.protectedLow) ? (this.protectedHigh.price + this.protectedLow.price) / 2 : null;
+        return {
+            price: lastBar.close,
+            lifecycle: this.state,
+            dealingRange: `${this.protectedLow ? this.protectedLow.price.toFixed(1) : '--'} - ${this.protectedHigh ? this.protectedHigh.price.toFixed(1) : '--'}`,
+            protectedHigh: this.protectedHigh ? this.protectedHigh.price : 0,
+            protectedLow: this.protectedLow ? this.protectedLow.price : 0,
+            equilibrium: eq,
+            zoneSide: (eq && lastBar.close < eq) ? 'DISCOUNT' : (eq ? 'PREMIUM' : '--'),
+            htfBias: this.htfBias,
+            liquidityMap: this.liquidityMap,
+            direction: this.activeTrade ? this.activeTrade.direction : "NEUTRAL",
+            decision: this.activeTrade ? `صفقة نشطة (${this.activeTrade.direction})` : `حالة النظام: ${this.state}`,
+            sweepInfo: this.chain.sweepEvent ? `${this.chain.sweepEvent.payload.direction} [${this.chain.sweepEvent.payload.label}]` : "None",
+            mssInfo: this.chain.internalMssEvent ? `${this.chain.internalMssEvent.payload.direction}` : "None",
+            causalZone: this.chain.causalZoneEvent ? `Zone: [${this.chain.causalZoneEvent.payload.zoneBottom.toFixed(1)} - ${this.chain.causalZoneEvent.payload.zoneTop.toFixed(1)}] ${this.chain.causalZoneEvent.payload.quality}` : "None",
+            triggerInfo: this.state,
+            chainIntegrity: chainCheck,
+            suggestedSL: this.activeTrade ? +this.activeTrade.sl.toFixed(2) : null,
+            suggestedTP1: this.activeTrade ? +this.activeTrade.tp1.toFixed(2) : null,
+            suggestedTP2: this.activeTrade ? +this.activeTrade.tp2.toFixed(2) : null,
+            confidence: this.activeTrade ? this.activeTrade.confidence : null,
+            projectedProfitTP1: this.activeTrade ? this.activeTrade.projectedProfitTP1 : null,
+            projectedProfitTP2: this.activeTrade ? this.activeTrade.projectedProfitTP2 : null,
+            meetsTargetAtTP1: this.activeTrade ? this.activeTrade.meetsTargetAtTP1 : null,
+            meetsTargetAtTP2: this.activeTrade ? this.activeTrade.meetsTargetAtTP2 : null,
+            causalZoneObj: this.chain.causalZoneEvent ? this.chain.causalZoneEvent.payload : null,
+            eventLedgerCount: this.eventLedger.length,
+            tradeHistoryCount: this.tradeHistory.length,
+            lastTrade: this.tradeHistory.length > 0 ? this.tradeHistory[this.tradeHistory.length - 1] : null,
+            justActivated: this.eventLedger.length > 0 && this.eventLedger[this.eventLedger.length - 1].type === 'TRADE_EXECUTED'
+        };
+    }
+}
+
+     
+global.StrictCausalSMCEngine = StrictCausalSMCEngine;
+})(window);
+/* ==========================================================================
+   [ربط الواجهة والرسوم البيانية]
+   ========================================================================== */
+let chart, candleSeries;
+let currentTF = '1m';
+let showOB = true;
+let historicalData = [];
+let engineConfig = { targetProfit: 5, positionSize: 1 };
+let engineInstance = new window.StrictCausalSMCEngine(engineConfig);
+let lastResult = null;
+let isFetching = false;
+let processedClosedCount = 0;
+let engineInitialized = false;
+let pollTimer = null;
+let ws = null;
+let wsReconnectTimer = null;
+let usingWs = false;
+
+const TF_GROUP_SIZE = { '1m': 15, '5m': 12, '15m': 16, '4h': 6 }; // تجميع تقريبي لبناء HTF Bias محلياً من نفس البيانات
+const TF_INTERVAL = { '1m': '1', '5m': '5', '15m': '15', '4h': '240' };
+const TF_WS_TOPIC = { '1m': '1', '5m': '5', '15m': '15', '4h': '240' };
+
+let lastNotifiedTradeKey = null;
+let notifyPermissionGranted = false;
+
+function requestNotifyPermission() {
+    if (!('Notification' in window)) {
+        alert('المتصفح لا يدعم إشعارات النظام. سيبقى صوت التنبيه داخل الصفحة يعمل.');
+        return;
+    }
+    Notification.requestPermission().then(p => {
+        notifyPermissionGranted = (p === 'granted');
+        const btn = document.getElementById('notifyBtn');
+        if (btn) btn.innerText = notifyPermissionGranted ? '🔔 التنبيهات مفعّلة' : '🔕 مرفوض — فعّلها من إعدادات المتصفح';
+    });
+}
+
+// Short two-tone beep via Web Audio API — no external sound file needed.
+function playAlertBeep() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [880, 660].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.18);
+            gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + i * 0.18 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.18 + 0.16);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(ctx.currentTime + i * 0.18);
+            osc.stop(ctx.currentTime + i * 0.18 + 0.18);
+        });
+    } catch (e) { /* audio not available — ignore silently */ }
+}
+
+// -----------------------------------------------------------------------
+// Real "signal" delivery: only pushes a notification when a trade has just
+// been executed (justActivated) AND it actually clears the user's dollar
+// target at TP1 (meetsTargetAtTP1). A setup that fires but falls short of
+// the target is NOT a real signal by the user's own definition — it stays
+// on-screen as a muted warning only, never as a push notification.
+// -----------------------------------------------------------------------
+function maybeSendSignalNotification(res) {
+    if (!res || !res.justActivated) return;
+    if (res.direction !== 'BUY' && res.direction !== 'SELL') return;
+
+    const key = `${res.direction}-${res.suggestedSL}-${res.suggestedTP1}`;
+    if (key === lastNotifiedTradeKey) return; // avoid duplicate fire on re-render
+
+    const qualifies = res.meetsTargetAtTP1 === true;
+    if (!qualifies) return; // فلترة الإشارات الوهمية: لا تنبيه إن كانت لا تحقق الهدف عند TP1
+
+    lastNotifiedTradeKey = key;
+    playAlertBeep();
+    const arDir = res.direction === 'BUY' ? 'شراء' : 'بيع';
+    const body = `دخول: ${res.price} | SL: ${res.suggestedSL} | TP1: ${res.suggestedTP1} | ربح متوقع ≈ $${res.projectedProfitTP1}`;
+    if ('Notification' in window && notifyPermissionGranted) {
+        new Notification(`🔔 إشارة ${arDir} مؤكدة — XAUUSDT`, { body });
+    }
+}
+
+function applyGoalSettings() {
+    const tp = parseFloat(document.getElementById('targetProfitInput').value) || 0;
+    const ps = parseFloat(document.getElementById('positionSizeInput').value) || 1;
+    engineConfig.targetProfit = tp;
+    engineConfig.positionSize = ps;
+    engineInstance.config.targetProfit = tp;
+    engineInstance.config.positionSize = ps;
+    if (lastResult) updateUI(lastResult, historicalData[historicalData.length - 1]);
+}
+
+function initChart() {
+    const container = document.getElementById('chart');
+    container.innerHTML = '';
+    chart = LightweightCharts.createChart(container, {
+        layout: { background: { type: 'solid', color: '#0d1322' }, textColor: '#94a3b8' },
+        grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { borderColor: '#1e293b' },
+        timeScale: { borderColor: '#1e293b', timeVisible: true, secondsVisible: false },
+    });
+
+    candleSeries = chart.addCandlestickSeries({
+        upColor: '#34d399', downColor: '#f87171', borderVisible: false,
+        wickUpColor: '#34d399', wickDownColor: '#f87171',
+    });
+
+    window.addEventListener('resize', () => {
+        chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+    });
+}
+
+function changeTimeframe(tf, event) {
+    document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
+    if (event && event.target) event.target.classList.add('active');
+    currentTF = tf;
+    engineInstance = new window.StrictCausalSMCEngine(engineConfig);
+    processedClosedCount = 0;
+    engineInitialized = false;
+    closeWs();
+    fetchBybitData().then(() => connectWs());
+}
+
+function toggleOB() {
+    showOB = !showOB;
+    document.getElementById('obToggle').classList.toggle('active', showOB);
+    renderMarkers();
+}
+
+function setWsIndicator(mode) {
+    const dot = document.getElementById('wsDot');
+    if (!dot) return;
+    dot.className = 'ws-dot' + (mode === 'live' ? ' live' : mode === 'poll' ? ' poll' : '');
+    dot.title = mode === 'live' ? 'تحديث لحظي عبر WebSocket' : mode === 'poll' ? 'تحديث عبر Polling (WS غير متاح)' : 'غير متصل';
+}
+
+function setConnectionStatus(ok, error) {
+    const badge = document.getElementById("stateBadge");
+    const priceEl = document.getElementById("price");
+    if (ok) return;
+    if (priceEl.innerText === 'جاري التحميل...' || priceEl.dataset.stale === '1') {
+        priceEl.innerText = 'تعذر الاتصال بالبيانات';
+        priceEl.dataset.stale = '1';
+    }
+    const reason = error && error.message ? error.message : 'خطأ غير معروف';
+    badge.innerText = `فشل الاتصال: ${reason}`;
+    badge.style.color = '#f87171';
+}
+
+// -----------------------------------------------------------------------
+// 20) خلاصة حية حقيقية: نفضّل Bybit public WebSocket (kline stream) على
+// الاستطلاع كل 5 ثوانٍ لأنه يدفع كل تحديث سعر فور حدوثه بدل الانتظار.
+// يبقى REST polling موجوداً كـ fallback تلقائي إن فشل WS أو انقطع.
+// -----------------------------------------------------------------------
+function connectWs() {
+    closeWs();
+    try {
+        ws = new WebSocket('wss://stream.bybit.com/v5/public/linear');
+        ws.onopen = () => {
+            const topic = `kline.${TF_WS_TOPIC[currentTF]}.XAUUSDT`;
+            ws.send(JSON.stringify({ op: 'subscribe', args: [topic] }));
+            usingWs = true;
+            setWsIndicator('live');
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = setInterval(fetchBybitData, 20000); } // احتياطي بطيء فقط
+        };
+        ws.onmessage = (msg) => {
+            try {
+                const data = JSON.parse(msg.data);
+                if (!data.topic || !data.topic.startsWith('kline.') || !data.data || !data.data[0]) return;
+                const k = data.data[0];
+                onWsKline({
+                    time: Math.floor(k.start / 1000),
+                    open: parseFloat(k.open), high: parseFloat(k.high),
+                    low: parseFloat(k.low), close: parseFloat(k.close),
+                    volume: parseFloat(k.volume), confirm: !!k.confirm
+                });
+            } catch (e) { /* تجاهل رسائل غير متوقعة (ping/pong إلخ) */ }
+        };
+        ws.onerror = () => { usingWs = false; setWsIndicator('poll'); };
+        ws.onclose = () => {
+            usingWs = false; setWsIndicator('poll');
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(fetchBybitData, 5000);
+            wsReconnectTimer = setTimeout(connectWs, 8000);
+        };
+    } catch (e) {
+        usingWs = false; setWsIndicator('poll');
+    }
+}
+
+function closeWs() {
+    if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+    if (ws) { try { ws.onclose = null; ws.close(); } catch (e) {} ws = null; }
+    usingWs = false;
+}
+
+function onWsKline(bar) {
+    if (!historicalData.length) return;
+    const last = historicalData[historicalData.length - 1];
+    if (bar.time === last.time) {
+        historicalData[historicalData.length - 1] = bar;
+    } else if (bar.time > last.time) {
+        historicalData.push(bar);
+    } else {
+        return; // تيك متأخر/مكرر
+    }
+
+    const closedData = historicalData.slice(0, -1);
+    const formingBar = historicalData[historicalData.length - 1];
+
+    if (closedData.length > processedClosedCount) {
+        for (let i = processedClosedCount; i < closedData.length; i++) {
+            if (i < 20) continue;
+            const subData = closedData.slice(0, i + 1);
+            lastResult = engineInstance.processLiveTick(subData, i, TF_GROUP_SIZE[currentTF]);
+        }
+        processedClosedCount = closedData.length;
+    } else {
+        lastResult = engineInstance.liveUpdate(formingBar, closedData.length - 1);
+    }
+
+    if (lastResult) updateUI(lastResult, formingBar);
+    candleSeries.update(historicalData[historicalData.length - 1]);
+    renderMarkers();
+}
+
+async function fetchBybitData() {
+    if (isFetching) return;
+    isFetching = true;
+    try {
+        const interval = TF_INTERVAL[currentTF] || '1';
+        const endpoints = [
+            `https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=200`,
+            `https://api.bytick.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=200`
+        ];
+
+        let json = null;
+        let lastError = null;
+        for (const url of endpoints) {
+            try {
+                const res = await fetch(url, { cache: 'no-store' });
+                if (!res.ok) { lastError = new Error(`HTTP ${res.status}`); continue; }
+                const candidate = await res.json();
+                if (candidate && candidate.retCode === 0 && candidate.result && candidate.result.list) {
+                    json = candidate;
+                    break;
+                } else {
+                    lastError = new Error(candidate && candidate.retMsg ? candidate.retMsg : 'استجابة غير صالحة من المصدر');
+                }
+            } catch (netErr) {
+                lastError = netErr;
+            }
+        }
+
+        if (!json) throw lastError || new Error('تعذّر الاتصال بأي مصدر بيانات');
+
+        if (json.result.list.length > 0) {
+            historicalData = json.result.list.reverse().map(item => ({
+                time: parseInt(item[0]) / 1000,
+                open: parseFloat(item[1]), high: parseFloat(item[2]),
+                low: parseFloat(item[3]), close: parseFloat(item[4]),
+                volume: parseFloat(item[5])
+            }));
+        }
+
+        if (!historicalData || historicalData.length < 60) return;
+        setConnectionStatus(true);
+        if (!usingWs) setWsIndicator('poll');
+
+        const closedData = historicalData.slice(0, -1);
+        const formingBar = historicalData[historicalData.length - 1];
+
+        if (!engineInitialized || closedData.length < processedClosedCount) {
+            lastResult = engineInstance.replay(historicalData, TF_GROUP_SIZE[currentTF]);
+            processedClosedCount = closedData.length;
+            engineInitialized = true;
+        } else if (closedData.length > processedClosedCount) {
+            for (let i = processedClosedCount; i < closedData.length; i++) {
+                if (i < 20) continue;
+                const subData = closedData.slice(0, i + 1);
+                lastResult = engineInstance.processLiveTick(subData, i, TF_GROUP_SIZE[currentTF]);
+            }
+            processedClosedCount = closedData.length;
+        } else {
+            lastResult = engineInstance.liveUpdate(formingBar, closedData.length - 1);
+        }
+
+        if (lastResult) updateUI(lastResult, formingBar);
+
+        candleSeries.setData(historicalData);
+        renderMarkers();
+    } catch (e) {
+        console.error("Bybit Error", e);
+        setConnectionStatus(false, e);
+    } finally {
+        isFetching = false;
+    }
+}
+
+function renderMarkers() {
+    if (!lastResult) return;
+    let markers = [];
+
+    if (showOB && lastResult.causalZoneObj) {
+        const zone = lastResult.causalZoneObj;
+        const targetIdx = zone.ob ? zone.ob.index : zone.fvg.index;
+        const bar = historicalData[targetIdx];
+        if (bar) {
+            markers.push({
+                time: bar.time,
+                position: 'aboveBar',
+                color: zone.confluence ? '#a855f7' : '#38bdf8',
+                shape: 'square',
+                text: `Causal Zone (${zone.ob ? (zone.fvg ? 'OB+FVG' : 'OB') : 'FVG'})`
+            });
+        }
+    }
+
+    candleSeries.setMarkers(markers);
+}
+
+function updateGoalAlert(res) {
+    const el = document.getElementById('goalAlert');
+    if (!el) return;
+    if (res.direction === 'BUY' || res.direction === 'SELL') {
+        const cls = res.direction === 'BUY' ? 'buy' : 'sell';
+        const arDir = res.direction === 'BUY' ? 'شراء' : 'بيع';
+        const target = engineConfig.targetProfit || 0;
+        let msg;
+        if (target > 0 && res.meetsTargetAtTP1) {
+            msg = `🔔 إشارة ${arDir} مؤكدة — الربح المتوقع عند TP1 ≈ $${res.projectedProfitTP1} (يحقق هدفك $${target})`;
+        } else if (target > 0 && res.meetsTargetAtTP2) {
+            msg = `🔔 إشارة ${arDir} — TP1 لا يكفي هدفك ($${res.projectedProfitTP1})، لكن TP2 يحققه ($${res.projectedProfitTP2})`;
+        } else if (target > 0) {
+            msg = `⚠️ إشارة ${arDir} نشطة لكنها لا تصل لهدف $${target} حتى عند TP2 (المتوقع $${res.projectedProfitTP2}) — راجع حجم المركز`;
+        } else {
+            msg = `🔔 إشارة ${arDir} نشطة — TP1: $${res.projectedProfitTP1} | TP2: $${res.projectedProfitTP2}`;
+        }
+        el.textContent = msg;
+        el.className = 'goal-alert ' + cls;
+    } else {
+        el.className = 'goal-alert';
+        el.textContent = '';
+    }
+}
+
+function updateUI(res, formingBar) {
+    const livePrice = formingBar ? formingBar.close : res.price;
+    const priceEl = document.getElementById("price");
+    priceEl.innerText = livePrice.toFixed(2);
+    priceEl.dataset.stale = '0';
+    document.getElementById("dealingRangeVal").innerText = res.dealingRange;
+    document.getElementById("tradeLifecycleVal").innerText = res.lifecycle;
+    document.getElementById("stateBadge").childNodes[0].nodeValue = `حالة النظام: ${res.lifecycle} `;
+
+    const lifecycleSteps = ['SETUP', 'ARMED', 'RETEST', 'CONFIRMED', 'ACTIVE', 'TP1', 'CLOSED', 'INVALIDATED'];
+    lifecycleSteps.forEach((stepName, idx) => {
+        const el = document.getElementById(`life-${idx + 1}`);
+        if (el) {
+            el.className = "life-step";
+            if (res.lifecycle === stepName) {
+                if (res.lifecycle === 'INVALIDATED' || res.lifecycle === 'CLOSED') el.classList.add('invalid');
+                else el.classList.add('active');
+            } else if (lifecycleSteps.indexOf(res.lifecycle) > idx) {
+                el.classList.add('done');
+            }
+        }
+    });
+
+    const tag = document.getElementById("signalTag");
+    const power = document.getElementById("signalPower");
+
+    tag.innerText = res.decision + (res.confidence ? ` (ثقة ${res.confidence}%)` : '');
+    power.innerText = `${res.chainIntegrity.links} روابط | ${res.chainIntegrity.valid ? 'سليمة' : 'مكسورة'}`;
+    power.style.color = res.chainIntegrity.valid ? '#34d399' : '#f87171';
+
+    const targetSet = (engineConfig.targetProfit || 0) > 0;
+    const qualifies = !targetSet || res.meetsTargetAtTP1 === true;
+    if (res.direction === "BUY" && qualifies) {
+        tag.className = "signal-tag signal-strong";
+    } else if (res.direction === "SELL" && qualifies) {
+        tag.className = "signal-tag signal-strong-sell";
+    } else if (res.direction === "BUY" || res.direction === "SELL") {
+        // Real setup exists but doesn't clear the user's $ target at TP1 —
+        // shown as a muted "waiting" tag, never as a confirmed strong signal.
+        tag.className = "signal-tag signal-wait";
+        tag.innerText = `${res.decision} — لا يحقق الهدف عند TP1`;
+    } else {
+        tag.className = "signal-tag signal-wait";
+    }
+
+    maybeSendSignalNotification(res);
+
+    document.getElementById("slVal").innerText = res.suggestedSL ?? "--";
+    document.getElementById("tp1Val").innerText = res.suggestedTP1 ?? "--";
+    document.getElementById("tp2Val").innerText = res.suggestedTP2 ?? "--";
+    document.getElementById("confVal").innerText = res.confidence ? `${res.confidence}%` : "--";
+
+    document.getElementById("structState").innerText = `H: ${res.protectedHigh ? res.protectedHigh.toFixed(1) : '--'} | L: ${res.protectedLow ? res.protectedLow.toFixed(1) : '--'}`;
+    document.getElementById("sweepState").innerText = res.sweepInfo;
+    document.getElementById("mssState").innerText = res.mssInfo;
+    document.getElementById("causalZone").innerText = res.causalZone;
+    document.getElementById("triggerState").innerText = res.triggerInfo;
+    document.getElementById("ledgerVal").innerText = `${res.eventLedgerCount} Events`;
+    document.getElementById("htfState").innerText = res.htfBias;
+    document.getElementById("htfState").style.color = res.htfBias === 'BULLISH' ? '#34d399' : res.htfBias === 'BEARISH' ? '#f87171' : '#94a3b8';
+    document.getElementById("pdState").innerText = res.equilibrium ? `${res.zoneSide} (EQ ${res.equilibrium.toFixed(1)})` : '--';
+
+    const lm = res.liquidityMap || {};
+    const eqh = (lm.equalHighs || []).map(x => x.price.toFixed(1)).join(', ') || '--';
+    const eql = (lm.equalLows || []).map(x => x.price.toFixed(1)).join(', ') || '--';
+    document.getElementById("liqMapState").innerText =
+        `PDH ${lm.pdh ? lm.pdh.toFixed(1) : '--'} | PDL ${lm.pdl ? lm.pdl.toFixed(1) : '--'} | EQH [${eqh}] | EQL [${eql}]`;
+
+    const tradeStatsEl = document.getElementById("tradeStatsVal");
+    if (tradeStatsEl) {
+        if (res.lastTrade) {
+            const won = res.lastTrade.result === 'CLOSED';
+            tradeStatsEl.innerText = `${res.tradeHistoryCount} | Last: ${res.lastTrade.direction} (${res.lastTrade.result})`;
+            tradeStatsEl.style.color = won ? '#34d399' : '#f87171';
+        } else {
+            tradeStatsEl.innerText = `${res.tradeHistoryCount}`;
+            tradeStatsEl.style.color = '#f8fafc';
+        }
+    }
+
+    updateGoalAlert(res);
+}
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => resolve(src);
+        s.onerror = () => reject(new Error(`تعذر تحميل: ${src}`));
+        document.head.appendChild(s);
+    });
+}
+
+async function loadLightweightCharts() {
+    if (window.LightweightCharts) return true;
+    const mirrors = [
+        'https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js',
+        'https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/lightweight-charts/4.1.1/lightweight-charts.standalone.production.js'
+    ];
+    for (const src of mirrors) {
+        try {
+            await loadScript(src);
+            if (window.LightweightCharts) return true;
+        } catch (e) {
+            console.error(e);
+        }
+    }
+    return false;
+}
+
+function showFatalError(message) {
+    const priceEl = document.getElementById("price");
+    const badge = document.getElementById("stateBadge");
+    if (priceEl) priceEl.innerText = 'تعذر تحميل الشارت';
+    if (badge) { badge.childNodes[0].nodeValue = `خطأ: ${message}`; badge.style.color = '#f87171'; }
+    const container = document.getElementById('chart');
+    if (container) container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f87171;font-size:0.85rem;padding:12px;text-align:center;">${message}</div>`;
+}
+
+async function boot() {
+    const ok = await loadLightweightCharts();
+    if (!ok || !window.LightweightCharts) {
+        showFatalError('تعذر تحميل مكتبة الرسم البياني من كل المصادر المتاحة (unpkg / jsdelivr / cdnjs). تحقق من الاتصال بالإنترنت أو حجب هذه النطاقات في شبكتك.');
+        return;
+    }
+    initChart();
+    setWsIndicator('poll');
+    pollTimer = setInterval(fetchBybitData, 5000);
+    await fetchBybitData();
+    connectWs();
+}
+
+boot();
+</script>
+</body>
 </html>
