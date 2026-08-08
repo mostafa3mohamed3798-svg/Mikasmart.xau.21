@@ -660,7 +660,8 @@ class StrictCausalSMCEngine {
         }
         return path;
     }
-     Validate the active chain is a genuinely unbroken causal sequence
+
+    // Validate the active chain is a genuinely unbroken causal sequence
     // (each link points to the previous link, indices are non-decreasing,
     // and no link has been marked invalidated).
     checkChainIntegrity() {
@@ -758,7 +759,7 @@ class StrictCausalSMCEngine {
 
         this.updateLiquidityMap(subData, currentIndex, protHighs, protLows);
     }
-
+ 
     // 13) Fuller liquidity map: PDH/PDL + equal highs/lows clustering
     updateLiquidityMap(subData, currentIndex, protHighs, protLows) {
         const atr = this._lastAtr || 1;
@@ -899,7 +900,8 @@ class StrictCausalSMCEngine {
         this.evaluateBar(subData, currentIndex, lastBar, atr);
         return this.buildResult(lastBar, atr);
     }
-    Update(formingBar, barIndex) {
+
+    liveUpdate(formingBar, barIndex) {
         if (this.state === 'ACTIVE' || this.state === 'TP1') {
             this.manageTrade(formingBar, barIndex);
             if (this.state === 'CLOSED' || this.state === 'INVALIDATED') {
@@ -1124,8 +1126,9 @@ class StrictCausalSMCEngine {
                 const fvgRecord = this.registerZone('FVG', foundFvg, bar);
                 foundFvg.fillStatus = fvgRecord.status; // 'fresh' at creation, evolves via updateZoneLifecycle
             }
-    }
-    if (!foundOb && !foundFvg) return;
+        }
+
+        if (!foundOb && !foundFvg) return;
 
         let zoneTop, zoneBottom, confluence = false;
         if (foundOb && foundFvg) {
@@ -1311,6 +1314,7 @@ class StrictCausalSMCEngine {
             emaVote = Math.max(0, Math.min(100, emaVote));
         }
 
+        
         // Analyst 5 — Volume expansion on the displacement leg + MACD
         // histogram sign agreeing with trade direction.
         let volMomVote = 50;
@@ -1372,7 +1376,8 @@ class StrictCausalSMCEngine {
         const rate = (this.config.feeRatePct || 0) * notional;
         return +(flat + rate).toFixed(4);
     }
-        // Net P/L for one fill (partial or final), fees and slippage included.
+
+    // Net P/L for one fill (partial or final), fees and slippage included.
     fillPnL(tr, exitPrice, fraction) {
         const posSize = tr.positionSize || this.config.positionSize || 1;
         const slip = this.currentSlippage();
@@ -1651,7 +1656,7 @@ class StrictCausalSMCEngine {
         }
         this.resetChain();
     }
-    
+
     // -----------------------------------------------------------
     // Backtest Statistics Engine: Win Rate, Expectancy, Profit Factor,
     // Average R, Max Drawdown, Consecutive Losses, Net P/L — computed
@@ -1916,6 +1921,8 @@ let usingWs = false;
 const TF_GROUP_SIZE = { '1m': 15, '5m': 12, '15m': 16, '4h': 6 }; // legacy param kept for the processLiveTick/replay signature; HTF bias itself now uses real clock buckets (config.htfBucketHours), not this
 const TF_INTERVAL = { '1m': '1', '5m': '5', '15m': '15', '4h': '240' };
 const TF_WS_TOPIC = { '1m': '1', '5m': '5', '15m': '15', '4h': '240' };
+// Binance Futures fallback data source uses its own interval string format.
+const BINANCE_INTERVAL = { '1m': '1m', '5m': '5m', '15m': '15m', '4h': '4h' };
 
 let lastNotifiedTradeKey = null;
 let notifyPermissionGranted = false;
@@ -2155,8 +2162,9 @@ function connectWs() {
     } catch (e) {
         usingWs = false; setWsIndicator('poll');
     }
-    }
-    function closeWs() {
+}
+
+function closeWs() {
     if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
     stopWsWatchdog();
     if (ws) { try { ws.onclose = null; ws.close(); } catch (e) {} ws = null; }
@@ -2201,39 +2209,58 @@ async function fetchBybitData() {
         // Bybit's v5 kline endpoint actually allows limit up to 1000 per
         // request (not 200) — bumped so HTF bias / PDH-PDL / structure all
         // get more real context on load, at no extra request cost.
+        //
+        // NOTE: bybit.com and bytick.com are the same company/infrastructure,
+        // so if Bybit is geo-blocked or firewalled for the user's network,
+        // BOTH fail together. binance.com's Futures kline endpoint is added
+        // as a genuinely independent third source (different company/CDN),
+        // so price data can still load even when Bybit itself is unreachable.
         const endpoints = [
-            `https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=1000`,
-            `https://api.bytick.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=1000`
+            { url: `https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=1000`, source: 'bybit' },
+            { url: `https://api.bytick.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=1000`, source: 'bybit' },
+            { url: `https://fapi.binance.com/fapi/v1/klines?symbol=XAUUSDT&interval=${BINANCE_INTERVAL[currentTF] || '1m'}&limit=1000`, source: 'binance' }
         ];
 
-        let json = null;
+        let bars = null;
         let lastError = null;
-        for (const url of endpoints) {
+        for (const ep of endpoints) {
             try {
-                const res = await fetch(url, { cache: 'no-store' });
+                const res = await fetch(ep.url, { cache: 'no-store' });
                 if (!res.ok) { lastError = new Error(`HTTP ${res.status}`); continue; }
                 const candidate = await res.json();
-                if (candidate && candidate.retCode === 0 && candidate.result && candidate.result.list) {
-                    json = candidate;
-                    break;
-                } else {
-                    lastError = new Error(candidate && candidate.retMsg ? candidate.retMsg : 'استجابة غير صالحة من المصدر');
+                if (ep.source === 'bybit') {
+                    if (candidate && candidate.retCode === 0 && candidate.result && candidate.result.list && candidate.result.list.length > 0) {
+                        bars = candidate.result.list.reverse().map(item => ({
+                            time: parseInt(item[0]) / 1000,
+                            open: parseFloat(item[1]), high: parseFloat(item[2]),
+                            low: parseFloat(item[3]), close: parseFloat(item[4]),
+                            volume: parseFloat(item[5])
+                        }));
+                        break;
+                    } else {
+                        lastError = new Error(candidate && candidate.retMsg ? candidate.retMsg : 'استجابة غير صالحة من المصدر');
+                    }
+                } else { // binance: array of [openTime, open, high, low, close, volume, closeTime, ...]
+                    if (Array.isArray(candidate) && candidate.length > 0) {
+                        bars = candidate.map(item => ({
+                            time: item[0] / 1000,
+                            open: parseFloat(item[1]), high: parseFloat(item[2]),
+                            low: parseFloat(item[3]), close: parseFloat(item[4]),
+                            volume: parseFloat(item[5])
+                        }));
+                        break;
+                    } else {
+                        lastError = new Error('استجابة غير صالحة من Binance');
+                    }
                 }
             } catch (netErr) {
                 lastError = netErr;
             }
         }
 
-        if (!json) throw lastError || new Error('تعذّر الاتصال بأي مصدر بيانات');
+        if (!bars) throw lastError || new Error('تعذّر الاتصال بأي مصدر بيانات (Bybit وBinance)');
 
-        if (json.result.list.length > 0) {
-            historicalData = json.result.list.reverse().map(item => ({
-                time: parseInt(item[0]) / 1000,
-                open: parseFloat(item[1]), high: parseFloat(item[2]),
-                low: parseFloat(item[3]), close: parseFloat(item[4]),
-                volume: parseFloat(item[5])
-            }));
-        }
+        if (bars.length > 0) historicalData = bars;
 
         if (!historicalData || historicalData.length < 60) return;
         setConnectionStatus(true);
@@ -2551,9 +2578,12 @@ function loadScript(src) {
 async function loadLightweightCharts() {
     if (window.LightweightCharts) return true;
     const mirrors = [
-        'https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js',
+        // NOTE: cdnjs.cloudflare.com does NOT actually host the
+        // lightweight-charts package (only jsdelivr/unpkg/npm/GitHub do) —
+        // it was removed from this list because it would always 404 and
+        // just added a scary console error before falling through anyway.
         'https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/lightweight-charts/4.1.1/lightweight-charts.standalone.production.js'
+        'https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js'
     ];
     for (const src of mirrors) {
         try {
@@ -2578,7 +2608,7 @@ function showFatalError(message) {
 async function boot() {
     const ok = await loadLightweightCharts();
     if (!ok || !window.LightweightCharts) {
-        showFatalError('تعذر تحميل مكتبة الرسم البياني من كل المصادر المتاحة (unpkg / jsdelivr / cdnjs). تحقق من الاتصال بالإنترنت أو حجب هذه النطاقات في شبكتك.');
+        showFatalError('تعذر تحميل مكتبة الرسم البياني من المصادر المتاحة (jsdelivr / unpkg). الأسباب الشائعة: لا يوجد اتصال إنترنت، أو مانع إعلانات/VPN يحجب هذه النطاقات، أو أن الصفحة تُعرض داخل معاينة مُقيَّدة (sandbox) لا تسمح بطلبات شبكية خارجية — في هذه الحالة نزّل الملف وافتحه مباشرة في المتصفح.');
         return;
     }
     initChart();
