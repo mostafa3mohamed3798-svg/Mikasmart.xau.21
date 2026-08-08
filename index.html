@@ -222,6 +222,7 @@ border: 1px solid #1e293b;
             <button class="tf-btn active" onclick="changeTimeframe('1m', event)">1m</button>  
             <button class="tf-btn" onclick="changeTimeframe('5m', event)">5m</button>  
             <button class="tf-btn" onclick="changeTimeframe('15m', event)">15m</button>  
+            <button class="tf-btn" onclick="changeTimeframe('4h', event)">4h</button>  
         </div>  
         <div class="indicator-group">  
             <button id="obToggle" class="indicator-btn active" onclick="toggleOB()">Causal Zone</button>  
@@ -563,8 +564,7 @@ class StrictCausalSMCEngine {
         } else {  
             inZone = (bar.high >= zone.zoneBottom && bar.high <= zone.zoneTop + (zone.zoneTop - zone.zoneBottom) * 0.1);  
         }  
-  
-        if (inZone) {  
+  if (inZone) {  
             this.chain.retestEvent = this.pushEvent('CAUSAL_ZONE_RETEST', barIndex, {  
                 touchPrice: bar.close,  
                 zoneType: zone.ob ? 'OB' : 'FVG'  
@@ -766,6 +766,7 @@ async function fetchBybitData() {
         let interval = '1';  
         if (currentTF === '5m') interval = '5';  
         if (currentTF === '15m') interval = '15';  
+        if (currentTF === '4h') interval = '240'; // Bybit kline interval code لـ 4 ساعات  
   
         // بعض الشبكات/المناطق تحجب api.bybit.com (CORS أو حجب جغرافي عبر Cloudflare)  
         // بينما يعمل المرآة الرسمية البديلة api.bytick.com بنفس الاستجابة تماماً.  
