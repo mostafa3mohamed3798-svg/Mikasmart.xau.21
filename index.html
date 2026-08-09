@@ -78,6 +78,20 @@ flex-wrap: wrap;
 gap: 8px;
 }
 .signal-tag { padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; }
+.conf-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 900;
+    font-size: 1rem;
+    background: rgba(148, 163, 184, 0.12);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    min-width: 58px;
+    text-align: center;
+}
+.conf-badge.high { background: rgba(52, 211, 153, 0.15); color: #34d399; border-color: rgba(52, 211, 153, 0.4); }
+.conf-badge.mid { background: rgba(234, 179, 8, 0.15); color: #eab308; border-color: rgba(234, 179, 8, 0.4); }
+.conf-badge.low { background: rgba(248, 113, 113, 0.15); color: #f87171; border-color: rgba(248, 113, 113, 0.4); }
 .signal-wait { background-color: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); }
 .signal-strong { background-color: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
 .signal-strong-sell { background-color: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
@@ -208,14 +222,88 @@ border: 1px solid #1e293b;
     margin-top: 8px;
     line-height: 1.6;
 }
-#settingsPanel label {
-    display: flex; flex-direction: column; gap: 3px; color: #94a3b8;
+
+/* ===================== Mika Extension: Live Market Dashboard ===================== */
+.section-title {
+    width: 100%;
+    max-width: 700px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #38bdf8;
+    margin: 14px 0 6px;
+    padding-inline-start: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
-#settingsPanel input[type="number"] {
-    background: #0a0f1c; border: 1px solid #1e293b; color: #f8fafc;
-    border-radius: 6px; padding: 5px 7px; font-size: 0.78rem; width: 100%;
+.section-title .dq-inline { font-size: 0.62rem; font-weight: 700; color: #64748b; }
+
+.dash-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    width: 100%;
+    max-width: 700px;
 }
-#settingsPanel input[type="checkbox"] { transform: scale(1.1); }
+.dash-card {
+    background: #0d1322;
+    border: 1px solid #1e293b;
+    padding: 9px 8px;
+    border-radius: 10px;
+    text-align: center;
+}
+.dash-card.wide { grid-column: span 3; text-align: start; }
+.dash-label { font-size: 0.6rem; color: #64748b; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.3px; }
+.dash-value { font-size: 0.82rem; font-weight: 900; color: #f8fafc; line-height: 1.35; }
+.dash-value.pos { color: #34d399; }
+.dash-value.neg { color: #f87171; }
+.dash-value.neu { color: #eab308; }
+.dash-value.muted { color: #64748b; font-weight: 700; }
+
+.dq-bar-wrap { width: 100%; height: 5px; border-radius: 3px; background: #1e293b; margin-top: 5px; overflow: hidden; }
+.dq-bar { height: 100%; background: #34d399; transition: width 0.3s ease; }
+
+.edge-banner {
+    width: 100%;
+    max-width: 700px;
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid rgba(234, 179, 8, 0.35);
+    color: #eab308;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin: 8px 0;
+    line-height: 1.6;
+    display: none;
+}
+.edge-banner.show { display: block; }
+
+.scenario-box {
+    width: 100%;
+    max-width: 700px;
+    background: #0d1322;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.72rem;
+    line-height: 1.75;
+    color: #cbd5e1;
+}
+.scenario-box b { color: #f8fafc; }
+.scenario-box .scn-primary { color: #38bdf8; font-weight: 800; }
+.scenario-box .scn-alt { color: #eab308; font-weight: 800; }
+.scenario-box .scn-inv { color: #f87171; font-weight: 800; }
+
+.calib-table { width: 100%; max-width: 700px; font-size: 0.66rem; border-collapse: collapse; }
+.calib-table th, .calib-table td { padding: 5px 6px; text-align: center; border-bottom: 1px solid #1e293b; color: #94a3b8; }
+.calib-table th { color: #38bdf8; font-weight: 800; }
+.calib-note { width: 100%; max-width: 700px; font-size: 0.6rem; color: #64748b; margin-top: 4px; line-height: 1.6; }
+
+.tape-box { width: 100%; max-width: 700px; max-height: 110px; overflow-y: auto; background: #04060b; border: 1px solid #1e293b; border-radius: 8px; padding: 6px 8px; font-size: 0.64rem; }
+.tape-row { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px dashed #1e293b; }
+.tape-row.buy { color: #34d399; }
+.tape-row.sell { color: #f87171; }
 </style>
 
 </head>
@@ -242,6 +330,9 @@ border: 1px solid #1e293b;
 
     <div class="signal-container">
         <span id="signalTag" class="signal-tag signal-wait">جاري التحقق من السلسلة...</span>
+        <span id="confBadge" class="conf-badge">-- %</span>
+    </div>
+    <div class="signal-container" style="margin-top:2px;border-top:none;padding-top:0;">
         <span class="signal-power">Chain Integrity: <strong id="signalPower" style="color: #fff;">0 Evt</strong></span>
     </div>
 
@@ -293,10 +384,6 @@ border: 1px solid #1e293b;
         <div id="ledgerVal" class="filter-value" style="color: #34d399;">0 Chain Links</div>
     </div>
     <div class="filter-card">
-        <div class="filter-label">TRADE HISTORY (LIVE)</div>
-        <div id="tradeStatsVal" class="filter-value" style="color: #f8fafc;">0</div>
-    </div>
-    <div class="filter-card">
         <div class="filter-label">HTF BIAS (MTF)</div>
         <div id="htfState" class="filter-value" style="color: #38bdf8;">--</div>
     </div>
@@ -309,21 +396,68 @@ border: 1px solid #1e293b;
         <div id="liqMapState" class="filter-value" style="color: #f8fafc;">--</div>
     </div>
     <div class="filter-card" style="grid-column: span 3;">
-        <div class="filter-label">CONFIDENCE TEAM VOTE (Causal/HTF/RSI/EMA/Vol+Momentum)</div>
+        <div class="filter-label">تصويت الفريق (السبب في نسبة الثقة) — Causal/HTF/RSI/EMA/Vol+Momentum</div>
         <div id="confBreakdownState" class="filter-value" style="color: #f8fafc;">--</div>
     </div>
-    <div class="filter-card" style="grid-column: span 3;">
-        <div class="filter-label">BACKTEST STATS (Win% | PF | Avg R | Net P/L | Max DD | Losing Streak)</div>
-        <div id="statsState" class="filter-value" style="color: #f8fafc;">--</div>
+</div>
+
+<div class="section-title">MARKET DASHBOARD <span class="dq-inline" id="dqInline">DATA QUALITY -- | AGE -- ms</span></div>
+<div class="dash-grid">
+    <div class="dash-card"><div class="dash-label">PRICE</div><div id="dPrice" class="dash-value">--</div></div>
+    <div class="dash-card"><div class="dash-label">BID / ASK</div><div id="dBidAsk" class="dash-value">--</div></div>
+    <div class="dash-card"><div class="dash-label">SPREAD</div><div id="dSpread" class="dash-value">--</div></div>
+
+    <div class="dash-card"><div class="dash-label">REGIME</div><div id="dRegime" class="dash-value">--</div></div>
+    <div class="dash-card"><div class="dash-label">VOLATILITY</div><div id="dVol" class="dash-value">--</div></div>
+    <div class="dash-card"><div class="dash-label">MOMENTUM</div><div id="dMomentum" class="dash-value">--</div></div>
+
+    <div class="dash-card"><div class="dash-label">HTF BIAS</div><div id="dHtf" class="dash-value">--</div></div>
+    <div class="dash-card"><div class="dash-label">MTF ALIGNMENT</div><div id="dMtf" class="dash-value">--</div></div>
+    <div class="dash-card"><div class="dash-label">CAUSAL CHAIN</div><div id="dChain" class="dash-value">--</div></div>
+
+    <div class="dash-card"><div class="dash-label">LIQUIDITY</div><div id="dLiquidity" class="dash-value">--</div></div>
+    <div class="dash-card"><div class="dash-label">ORDER FLOW</div><div id="dFlow" class="dash-value">--</div></div>
+    <div class="dash-card"><div class="dash-label">OB IMBALANCE</div><div id="dImbalance" class="dash-value">--</div></div>
+
+    <div class="dash-card"><div class="dash-label">OPEN INTEREST</div><div id="dOi" class="dash-value">--</div></div>
+    <div class="dash-card"><div class="dash-label">FUNDING</div><div id="dFunding" class="dash-value">--</div></div>
+    <div class="dash-card"><div class="dash-label">LIQUIDATIONS</div><div id="dLiq" class="dash-value">--</div></div>
+
+    <div class="dash-card wide">
+        <div class="dash-label">MARKET SCORE (مقياس مركّب — ليس احتمال إحصائي)</div>
+        <div id="dScore" class="dash-value" style="font-size:1rem;">--</div>
+        <div id="dScoreBreakdown" style="font-size:0.6rem;color:#94a3b8;margin-top:4px;line-height:1.7;">--</div>
     </div>
-    <div class="filter-card" style="grid-column: span 3;">
-        <div class="filter-label">RISK-ADJUSTED (Sharpe/Sortino هي وكيل لكل صفقة، ليست Sharpe سنوي حقيقي)</div>
-        <div id="statsExtraState" class="filter-value" style="color: #f8fafc; font-size: 0.7rem;">--</div>
+    <div class="dash-card wide">
+        <div class="dash-label">NEAREST LIQUIDITY (المسافة إلى أقرب سيولة)</div>
+        <div id="dNearLiq" class="dash-value" style="font-size:0.72rem;">--</div>
     </div>
-    <div class="filter-card" style="grid-column: span 3;">
-        <div class="filter-label">SCORE BUCKETS (Win% + 95% CI — ليس Probability معايرة إن كانت العيّنة صغيرة)</div>
-        <div id="bucketsState" class="filter-value" style="color: #f8fafc; font-size: 0.66rem;">--</div>
+    <div class="dash-card wide">
+        <div class="dash-label">CAUSAL CHAIN STAGES — Sweep → MSS → Displacement → Zone → Retest → Rejection → Trigger → Confirmation</div>
+        <div id="dChainStages" class="dash-value" style="font-size:0.66rem;line-height:1.9;">--</div>
     </div>
+    <div class="dash-card wide">
+        <div class="dash-label">DATA QUALITY</div>
+        <div id="dqDetail" class="dash-value" style="font-size:0.68rem;">--</div>
+        <div class="dq-bar-wrap"><div id="dqBar" class="dq-bar" style="width:0%;"></div></div>
+    </div>
+</div>
+
+<div id="edgeBanner" class="edge-banner"></div>
+
+<div class="section-title">SCENARIO ANALYSIS</div>
+<div class="scenario-box" id="scenarioBox">جاري تحليل السيناريوهات...</div>
+
+<div class="section-title">RECENT TRADE TAPE</div>
+<div class="tape-box" id="tapeBox"></div>
+
+<div class="section-title">HISTORICAL / LIVE-FORWARD ACCURACY <span class="dq-inline" id="calibSampleCount">0 عينة</span></div>
+<table class="calib-table">
+    <thead><tr><th>Score Bucket</th><th>عدد العينات</th><th>دقة الاتجاه (بعد 15 دقيقة)</th></tr></thead>
+    <tbody id="calibBody"><tr><td colspan="3" style="color:#64748b;">لا توجد عينات كافية بعد</td></tr></tbody>
+</table>
+<div class="calib-note">
+    ⚠️ هذا الجدول <b>تتبّع حي للأمام (Live Forward Tracking)</b> يبدأ من لحظة تشغيلك للأداة ويتراكم فعلياً في متصفحك (localStorage) — كل قراءة MARKET SCORE تُسجَّل تلقائياً ثم تُراجَع بعد 5/15/30/60 دقيقة مقارنة بحركة السعر الفعلية. هذا <b>ليس Walk-Forward Backtest</b> على بيانات تاريخية ضخمة (ذلك يتطلب بنية بيانات وسنوات من الشموع غير متاحة داخل صفحة واحدة تعمل في المتصفح) — لذلك لا تعتبر النسب هنا معايرة إحصائية موثوقة إلا بعد تراكم عشرات/مئات العينات لكل فئة Score.
 </div>
 
 <div class="chart-card">
@@ -345,35 +479,7 @@ border: 1px solid #1e293b;
 <div class="note-box">
     ⚠️ ملاحظة صادقة: هذه الأداة تعرض <b>إشارات تحليلية للمعلومات فقط</b> وليست تنفيذاً حقيقياً لأوامر عبر وسيط. TP1 الجزئي وBreak-Even والـ Trailing كلها محاكاة حسابية داخل المحرك (لا يوجد اتصال بحساب تداول فعلي). كذلك السيولة اللحظية عبر WebSocket تُحدّث السعر والصفقة النشطة فوراً، لكن بنية السوق (Structure/Sweep/MSS/Displacement) تُبنى فقط من الشموع المُغلقة (لا Look-ahead)، وتبقى بيانات OHLC غير كافية لمعرفة الترتيب الحقيقي للتيك عند لمس SL وTP في نفس الشمعة (Ambiguous Candle) — يُحل هذا بافتراض متحفظ موضّح في الكود، وليس بيقين تام.
     <br><br>
-    ⚠️ <b>"الثقة" (Confidence) رقم مُركّب من 5 عوامل موزونة (Score من 0-100)، وليست احتمال نجاح إحصائي حقيقي</b> — رقم 87% لا يعني "87% فرصة ربح فعلية". الاحتمال الحقيقي (Calibrated Probability) يحتاج معدل فوز فعلي محسوب من عدد كبير من الصفقات التاريخية لكل نطاق ثقة (انظر Score Buckets وBacktest العميق أسفل الصفحة) — وحتى الآن العينة غير كافية لهذا الادعاء.
-</div>
-<div class="note-box" id="backtestPanel">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-        <b>Backtest عميق (بيانات حقيقية أكثر، In-Sample / Out-of-Sample)</b>
-        <button class="tf-btn" onclick="runDeepBacktest()" id="deepBacktestBtn">تشغيل</button>
-    </div>
-    <div id="deepBacktestResult" style="margin-top:6px;">لم يتم التشغيل بعد. هذا يجلب حتى ~5000 شمعة حقيقية من Bybit (مقسّمة 70% In-Sample / 30% Out-of-Sample) ويشغّل نسخة منفصلة من المحرك عليها — نتائج فعلية محسوبة، وليست تقديرية.</div>
-</div>
-<div class="note-box" id="settingsPanel">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-        <b>إعدادات المحرك (Risk / Fees / Slippage / Target)</b>
-        <button class="tf-btn" onclick="applyEngineSettings()" id="applySettingsBtn">تطبيق وإعادة التشغيل</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:8px;font-size:0.78rem;">
-        <label>Account Balance $<input type="number" id="cfgAccountBalance" value="0" step="100"></label>
-        <label>Risk % / صفقة<input type="number" id="cfgRiskPercent" value="0" step="0.1"></label>
-        <label>Position Size (ثابت — يُستخدم فقط إن كانت Account/Risk% = 0)<input type="number" id="cfgPositionSize" value="1" step="0.01"></label>
-        <label>Target Profit $ (0 = معطّل)<input type="number" id="cfgTargetProfit" value="0" step="1"></label>
-        <label>Fee Rate % (من القيمة الفعلية)<input type="number" id="cfgFeeRatePct" value="0.055" step="0.001"></label>
-        <label>Fee Per Fill $ (ثابت)<input type="number" id="cfgFeePerFill" value="0" step="0.01"></label>
-        <label>Slippage × ATR<input type="number" id="cfgSlippageAtrMult" value="0.02" step="0.01"></label>
-        <label>Daily Loss Limit $ (0 = معطّل)<input type="number" id="cfgDailyLossLimit" value="0" step="10"></label>
-        <label>Max Trades/Day (0 = معطّل)<input type="number" id="cfgMaxTradesPerDay" value="0" step="1"></label>
-        <label>Max Consecutive Losses (0 = معطّل)<input type="number" id="cfgMaxConsecutiveLosses" value="0" step="1"></label>
-        <label>Day Boundary Offset (ساعات)<input type="number" id="cfgDayBoundaryOffset" value="0" step="1"></label>
-        <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="cfgRequireTP1" checked style="width:auto;"> يتطلب TP1 يحقق الهدف للتنبيه</label>
-    </div>
-    <div id="settingsApplyMsg" style="margin-top:6px;color:#94a3b8;font-size:0.72rem;">تغيير هذه القيم يعيد بناء المحرك ويصفّر حالة الصفقة الحالية (لا يمس أي صفقة حقيقية — هذه أداة تحليلية فقط).</div>
+    ⚠️ <b>"الثقة" (Confidence) رقم مُركّب من 5 عوامل موزونة (Score من 0-100)، وليست احتمال نجاح إحصائي حقيقي</b> — رقم 87% لا يعني "87% فرصة ربح فعلية"، بل يعني أن 87% من وزن الأصوات الخمسة (البنية السببية/الاتجاه الأعلى/RSI/EMA/الزخم+الحجم) يتفق مع اتجاه الإشارة. استخدمها كمقياس نسبي لقوة التوافق بين المؤشرات، لا كاحتمال نجاح مضمون.
 </div>
 <script>
 /* ==========================================================================
@@ -759,7 +865,7 @@ class StrictCausalSMCEngine {
 
         this.updateLiquidityMap(subData, currentIndex, protHighs, protLows);
     }
- 
+
     // 13) Fuller liquidity map: PDH/PDL + equal highs/lows clustering
     updateLiquidityMap(subData, currentIndex, protHighs, protLows) {
         const atr = this._lastAtr || 1;
@@ -1314,7 +1420,6 @@ class StrictCausalSMCEngine {
             emaVote = Math.max(0, Math.min(100, emaVote));
         }
 
-        
         // Analyst 5 — Volume expansion on the displacement leg + MACD
         // histogram sign agreeing with trade direction.
         let volMomVote = 50;
@@ -2016,48 +2121,6 @@ function changeTimeframe(tf, event) {
     fetchBybitData().then(() => connectWs());
 }
 
-// Reads the settings panel inputs into engineConfig and rebuilds the engine
-// with them — previously these knobs (targetProfit, positionSize, and every
-// risk/fee/slippage field added this session) existed only in code with NO
-// way for the user to actually change them from the UI. This wires them up.
-function applyEngineSettings() {
-    const num = (id, fallback) => {
-        const el = document.getElementById(id);
-        const v = el ? parseFloat(el.value) : NaN;
-        return Number.isFinite(v) ? v : fallback;
-    };
-    engineConfig.targetProfit = num('cfgTargetProfit', 0);
-    engineConfig.positionSize = num('cfgPositionSize', 1);
-    engineConfig.accountBalanceUsd = num('cfgAccountBalance', 0);
-    engineConfig.riskPercentPerTrade = num('cfgRiskPercent', 0);
-    engineConfig.feeRatePct = num('cfgFeeRatePct', 0.055) / 100; // input is in %, config stores a fraction
-    engineConfig.feePerFill = num('cfgFeePerFill', 0);
-    engineConfig.slippageAtrMult = num('cfgSlippageAtrMult', 0.02);
-    engineConfig.dailyLossLimitUsd = num('cfgDailyLossLimit', 0);
-    engineConfig.maxTradesPerDay = num('cfgMaxTradesPerDay', 0);
-    engineConfig.maxConsecutiveLosses = num('cfgMaxConsecutiveLosses', 0);
-    engineConfig.dayBoundaryOffsetHours = num('cfgDayBoundaryOffset', 0);
-    const tp1Chk = document.getElementById('cfgRequireTP1');
-    engineConfig.requireTP1ForSignal = tp1Chk ? tp1Chk.checked : true;
-
-    const msg = document.getElementById('settingsApplyMsg');
-    if (msg) msg.textContent = 'تم التطبيق — يعاد بناء المحرك وإعادة معالجة البيانات المحمّلة...';
-
-    // Rebuild exactly like changeTimeframe does: fresh engine, fresh replay,
-    // so historical stats/zones reflect the new config consistently instead
-    // of mixing trades priced under the old fees/sizing with new ones.
-    engineInstance = new window.StrictCausalSMCEngine(engineConfig);
-    processedClosedCount = 0;
-    engineInitialized = false;
-    if (historicalData && historicalData.length >= 60) {
-        lastResult = engineInstance.replay(historicalData, TF_GROUP_SIZE[currentTF]);
-        processedClosedCount = historicalData.length - 1;
-        engineInitialized = true;
-        if (lastResult) updateUI(lastResult, historicalData[historicalData.length - 1]);
-    }
-    if (msg) msg.textContent = 'تم التطبيق. الإعدادات الحالية تُستخدم في كل صفقة جديدة ومحسوبة في الإحصائيات.';
-}
-
 function toggleOB() {
     showOB = !showOB;
     document.getElementById('obToggle').classList.toggle('active', showOB);
@@ -2131,7 +2194,17 @@ function connectWs() {
         ws = new WebSocket('wss://stream.bybit.com/v5/public/linear');
         ws.onopen = () => {
             const topic = `kline.${TF_WS_TOPIC[currentTF]}.XAUUSDT`;
-            ws.send(JSON.stringify({ op: 'subscribe', args: [topic] }));
+            // المرحلة الثانية: نضيف على نفس اتصال WS الحالي تدفقات Bid/Ask
+            // (tickers) وصفقات التنفيذ اللحظية (publicTrade) وعمق دفتر
+            // الأوامر (orderbook.50) وتصفيات السوق (allLiquidation) — بدل
+            // فتح اتصالات منفصلة، فكلها تُبث على نفس public/linear socket.
+            const extraTopics = [
+                'orderbook.50.XAUUSDT',
+                'publicTrade.XAUUSDT',
+                'tickers.XAUUSDT',
+                'allLiquidation.XAUUSDT'
+            ];
+            ws.send(JSON.stringify({ op: 'subscribe', args: [topic, ...extraTopics] }));
             usingWs = true;
             setWsIndicator('live');
             startWsWatchdog();
@@ -2141,14 +2214,24 @@ function connectWs() {
             wsLastMessageAt = Date.now(); // any message — data OR pong — counts as proof the feed is alive
             try {
                 const data = JSON.parse(msg.data);
-                if (!data.topic || !data.topic.startsWith('kline.') || !data.data || !data.data[0]) return;
-                const k = data.data[0];
-                onWsKline({
-                    time: Math.floor(k.start / 1000),
-                    open: parseFloat(k.open), high: parseFloat(k.high),
-                    low: parseFloat(k.low), close: parseFloat(k.close),
-                    volume: parseFloat(k.volume), confirm: !!k.confirm
-                });
+                if (!data.topic) return;
+                if (data.topic.startsWith('kline.')) {
+                    if (typeof MikaExt !== 'undefined') MikaExt.touchFeed('kline');
+                    if (!data.data || !data.data[0]) return;
+                    const k = data.data[0];
+                    onWsKline({
+                        time: Math.floor(k.start / 1000),
+                        open: parseFloat(k.open), high: parseFloat(k.high),
+                        low: parseFloat(k.low), close: parseFloat(k.close),
+                        volume: parseFloat(k.volume), confirm: !!k.confirm
+                    });
+                    return;
+                }
+                if (typeof MikaExt === 'undefined') return;
+                if (data.topic.startsWith('orderbook.')) { MikaExt.handleOrderbook(data); return; }
+                if (data.topic.startsWith('publicTrade.')) { MikaExt.handleTrade(data); return; }
+                if (data.topic.startsWith('tickers.')) { MikaExt.handleTicker(data); return; }
+                if (data.topic.startsWith('allLiquidation.')) { MikaExt.handleLiquidation(data); return; }
             } catch (e) { /* تجاهل رسائل غير متوقعة (ping/pong إلخ) — لكنها سجّلت وصولها أعلاه بالفعل */ }
         };
         ws.onerror = () => { usingWs = false; setWsIndicator('poll'); };
@@ -2307,82 +2390,6 @@ async function fetchBybitData() {
 // validation, not a substitute for proper rolling walk-forward across
 // many windows and market regimes.
 // -----------------------------------------------------------------------
-async function fetchHistoricalPage(interval, endMs) {
-    const base = `https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=${interval}&limit=1000` + (endMs ? `&end=${endMs}` : '');
-    const res = await fetch(base, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    if (!json || json.retCode !== 0 || !json.result || !json.result.list) throw new Error(json && json.retMsg ? json.retMsg : 'استجابة غير صالحة');
-    return json.result.list.map(item => ({
-        time: parseInt(item[0]) / 1000,
-        open: parseFloat(item[1]), high: parseFloat(item[2]),
-        low: parseFloat(item[3]), close: parseFloat(item[4]),
-        volume: parseFloat(item[5])
-    }));
-}
-
-async function runDeepBacktest() {
-    const btn = document.getElementById('deepBacktestBtn');
-    const out = document.getElementById('deepBacktestResult');
-    if (!out) return;
-    if (btn) btn.disabled = true;
-    out.innerText = 'جاري جلب البيانات التاريخية الحقيقية (عدة صفحات)...';
-    try {
-        const interval = TF_INTERVAL[currentTF] || '15';
-        const pages = 5; // 5 x 1000 = ~5000 real candles
-        let all = [];
-        let endMs = undefined;
-        for (let p = 0; p < pages; p++) {
-            const page = await fetchHistoricalPage(interval, endMs);
-            if (!page.length) break;
-            all = page.concat(all); // pages come back newest-first per call, oldest overall goes first
-            endMs = Math.round(page[0].time * 1000) - 1; // fetch strictly older than this page's earliest bar next
-            out.innerText = `جاري الجلب... ${all.length} شمعة حتى الآن`;
-        }
-        all.sort((a, b) => a.time - b.time);
-        // de-dup any boundary overlap between pages
-        all = all.filter((b, i) => i === 0 || b.time !== all[i - 1].time);
-
-        if (all.length < 300) {
-            out.innerText = `بيانات غير كافية (${all.length} شمعة فقط رجعت من المصدر) — جرّب فريم زمني آخر.`;
-            return;
-        }
-
-        const splitIdx = Math.floor(all.length * 0.7);
-        const freshEngine = new window.StrictCausalSMCEngine(Object.assign({}, engineConfig));
-        freshEngine.replay(all, TF_GROUP_SIZE[currentTF]);
-
-        const isTrades = freshEngine.tradeHistory.filter(t => t.netPnL != null && t.entryBarIndex < splitIdx);
-        const oosTrades = freshEngine.tradeHistory.filter(t => t.netPnL != null && t.entryBarIndex >= splitIdx);
-
-        const statsFor = (trades) => {
-            if (!trades.length) return null;
-            const n = trades.length;
-            const wins = trades.filter(t => t.netPnL > 0).length;
-            const grossWin = trades.filter(t => t.netPnL > 0).reduce((s, t) => s + t.netPnL, 0);
-            const grossLoss = Math.abs(trades.filter(t => t.netPnL <= 0).reduce((s, t) => s + t.netPnL, 0));
-            const winRate = +((wins / n) * 100).toFixed(1);
-            const pf = grossLoss > 0 ? +(grossWin / grossLoss).toFixed(2) : (grossWin > 0 ? Infinity : 0);
-            const net = +trades.reduce((s, t) => s + t.netPnL, 0).toFixed(2);
-            return { n, winRate, pf: pf === Infinity ? '∞' : pf, net };
-        };
-        const isStats = statsFor(isTrades);
-        const oosStats = statsFor(oosTrades);
-
-        const fmt = (s) => s ? `${s.n} صفقة | فوز ${s.winRate}% | PF ${s.pf} | صافي $${s.net}` : 'لا صفقات كافية في هذا الجزء';
-
-        out.innerHTML = `
-            إجمالي الشموع الحقيقية المستخدمة: <b>${all.length}</b> (${new Date(all[0].time * 1000).toISOString().slice(0,10)} → ${new Date(all[all.length-1].time * 1000).toISOString().slice(0,10)})<br>
-            In-Sample (أول 70%): ${fmt(isStats)}<br>
-            Out-of-Sample (آخر 30%، لم تُستخدم في أي ضبط): ${fmt(oosStats)}<br>
-            <span style="color:#eab308;">⚠️ نافذة IS/OOS واحدة على رمز/فريم واحد — تحقّق أولي، وليست walk-forward كامل عبر نوافذ وأنظمة سوق متعددة، وما زال العدد أقل بكثير من "عشرات الآلاف من الشموع" المطلوبة لإثبات edge إحصائياً بثقة.</span>`;
-    } catch (e) {
-        out.innerText = `تعذّر تشغيل الـ Backtest: ${e.message || e}`;
-    } finally {
-        if (btn) btn.disabled = false;
-    }
-}
-
 function renderMarkers() {
     if (!lastResult) return;
     let markers = [];
@@ -2408,21 +2415,10 @@ function renderMarkers() {
 function updateGoalAlert(res) {
     const el = document.getElementById('goalAlert');
     if (!el) return;
-    if (res.direction === 'BUY' || res.direction === 'SELL') {
+    if ((res.direction === 'BUY' || res.direction === 'SELL') && (res.actionable === true || res.actionable === null)) {
         const cls = res.direction === 'BUY' ? 'buy' : 'sell';
         const arDir = res.direction === 'BUY' ? 'شراء' : 'بيع';
-        const target = engineConfig.targetProfit || 0;
-        let msg;
-        if (target > 0 && res.meetsTargetAtTP1) {
-            msg = `🔔 إشارة ${arDir} مؤكدة — الربح المتوقع عند TP1 ≈ $${res.projectedProfitTP1} (يحقق هدفك $${target})`;
-        } else if (target > 0 && res.meetsTargetAtTP2) {
-            msg = `🔔 إشارة ${arDir} — TP1 لا يكفي هدفك ($${res.projectedProfitTP1})، لكن TP2 يحققه ($${res.projectedProfitTP2})`;
-        } else if (target > 0) {
-            msg = `⚠️ إشارة ${arDir} نشطة لكنها لا تصل لهدف $${target} حتى عند TP2 (المتوقع $${res.projectedProfitTP2}) — راجع حجم المركز`;
-        } else {
-            msg = `🔔 إشارة ${arDir} نشطة — TP1: $${res.projectedProfitTP1} | TP2: $${res.projectedProfitTP2}`;
-        }
-        el.textContent = msg;
+        el.textContent = `🔔 إشارة ${arDir} — ثقة ${res.confidence ?? '--'}% | الدخول ${res.price} | SL ${res.suggestedSL ?? '--'} | TP1 ${res.suggestedTP1 ?? '--'} | TP2 ${res.suggestedTP2 ?? '--'}`;
         el.className = 'goal-alert ' + cls;
     } else {
         el.className = 'goal-alert';
@@ -2455,21 +2451,27 @@ function updateUI(res, formingBar) {
 
     const tag = document.getElementById("signalTag");
     const power = document.getElementById("signalPower");
+    const confBadge = document.getElementById("confBadge");
 
-    tag.innerText = res.decision + (res.confidence ? ` (ثقة ${res.confidence}%)` : '');
+    tag.innerText = res.decision;
     power.innerText = `${res.chainIntegrity.links} روابط | ${res.chainIntegrity.valid ? 'سليمة' : 'مكسورة'}`;
     power.style.color = res.chainIntegrity.valid ? '#34d399' : '#f87171';
+
+    if (confBadge) {
+        if (res.confidence != null) {
+            confBadge.innerText = `${res.confidence}%`;
+            confBadge.className = 'conf-badge ' + (res.confidence >= 70 ? 'high' : res.confidence >= 40 ? 'mid' : 'low');
+        } else {
+            confBadge.innerText = '-- %';
+            confBadge.className = 'conf-badge';
+        }
+    }
 
     const qualifies = res.actionable === true || res.actionable === null;
     if (res.direction === "BUY" && qualifies) {
         tag.className = "signal-tag signal-strong";
     } else if (res.direction === "SELL" && qualifies) {
         tag.className = "signal-tag signal-strong-sell";
-    } else if (res.direction === "BUY" || res.direction === "SELL") {
-        // Real setup exists but doesn't clear the user's $ target at TP1 —
-        // shown as a muted "waiting" tag, never as a confirmed strong signal.
-        tag.className = "signal-tag signal-wait";
-        tag.innerText = `${res.decision} — لا يحقق الهدف عند TP1`;
     } else {
         tag.className = "signal-tag signal-wait";
     }
@@ -2499,52 +2501,14 @@ function updateUI(res, formingBar) {
     document.getElementById("liqMapState").innerText =
         `PDH ${lm.pdh ? lm.pdh.toFixed(1) : '--'} | PDL ${lm.pdl ? lm.pdl.toFixed(1) : '--'} | EQH [${eqh}] | EQL [${eql}]`;
 
-    const tradeStatsEl = document.getElementById("tradeStatsVal");
-    if (tradeStatsEl) {
-        if (res.lastTrade) {
-            const won = res.lastTrade.result === 'CLOSED';
-            tradeStatsEl.innerText = `${res.tradeHistoryCount} | Last: ${res.lastTrade.direction} (${res.lastTrade.result})`;
-            tradeStatsEl.style.color = won ? '#34d399' : '#f87171';
-        } else {
-            tradeStatsEl.innerText = `${res.tradeHistoryCount}`;
-            tradeStatsEl.style.color = '#f8fafc';
-        }
-    }
-
+    // كل عناصر الفريق (البنية السببية/HTF/RSI/EMA/الحجم+الزخم) تُلخّص هنا —
+    // هذا هو أساس نسبة الثقة الظاهرة أعلى الصفحة، موضّح تفصيلياً لكل عضو.
     const cb = res.confidenceBreakdown;
     const confBreakdownEl = document.getElementById("confBreakdownState");
     if (confBreakdownEl) {
         confBreakdownEl.innerText = cb
-            ? `Causal ${cb.causalChain} | HTF ${cb.htfBias} | RSI ${cb.rsi} | EMA ${cb.emaTrend} | Vol+Mom ${cb.volumeMomentum}`
+            ? `البنية السببية ${cb.causalChain} | الاتجاه الأعلى ${cb.htfBias} | RSI ${cb.rsi} | EMA ${cb.emaTrend} | الحجم+الزخم ${cb.volumeMomentum}`
             : '--';
-    }
-
-    const st = res.stats;
-    const statsEl = document.getElementById("statsState");
-    if (statsEl) {
-        statsEl.innerText = st && st.count > 0
-            ? `${st.winRate}% | PF ${st.profitFactor === Infinity ? '∞' : st.profitFactor} | ${st.avgR}R | $${st.netPnL} | -$${st.maxDrawdown} | ${st.consecutiveLosses}x`
-            : `لا توجد صفقات مغلقة بعد (0)`;
-    }
-    // 24) Extra risk-adjusted metrics — separate line so the compact line
-    // above stays readable. Sharpe/Sortino are per-trade-R proxies (see
-    // comment on computeStatistics), not textbook annualized figures.
-    const statsExtraEl = document.getElementById("statsExtraState");
-    if (statsExtraEl) {
-        statsExtraEl.innerText = st && st.count > 0
-            ? `Sharpe(R) ${st.sharpe ?? '--'} | Sortino(R) ${st.sortino ?? '--'} | Net/MaxDD ${st.returnOverMaxDD ?? '--'} | مدة متوسطة ${st.avgDurationBars ?? '--'} شمعة | تعرّض ${st.exposurePct ?? '--'}% | MFE ${st.avgMfeR ?? '--'}R | MAE ${st.avgMaeR ?? '--'}R`
-            : '';
-    }
-
-    const bucketsEl = document.getElementById("bucketsState");
-    if (bucketsEl && res.scoreBuckets) {
-        const nonEmpty = res.scoreBuckets.filter(b => b.count > 0);
-        // 25) Show the 95% CI and flag small-sample buckets so a bucket's
-        // win rate isn't read as a calibrated probability when it's really
-        // just 3-4 trades — e.g. "90-100+: 4 صفقة، ربح 75% (46-100٪، عيّنة صغيرة)".
-        bucketsEl.innerText = nonEmpty.length
-            ? nonEmpty.map(b => `${b.range}: ${b.count} صفقة، ربح ${b.winRate}% (${b.ciLow}-${b.ciHigh}%${b.lowSample ? '، عيّنة صغيرة' : ''}), ${b.avgR}R`).join(' | ')
-            : 'لا توجد بيانات كافية بعد';
     }
 
     updateGoalAlert(res);
@@ -2605,6 +2569,657 @@ function showFatalError(message) {
     if (container) container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f87171;font-size:0.85rem;padding:12px;text-align:center;">${message}</div>`;
 }
 
+/* ==========================================================================
+   [Mika Extension — طبقة الذكاء اللحظي الإضافية]
+   تقرأ من المحرك السببي أعلاه ومن تدفقات WS الإضافية (Orderbook/Trades/
+   Tickers/Liquidations) ولا تُعدّل حالته. مسؤولة عن: جودة البيانات، السعر
+   الحقيقي (Bid/Ask/Spread)، تدفق الصفقات وعمق السوق، خريطة سيولة موسّعة
+   ومسافات إليها، العقود الآجلة (OI/Funding/Liquidations)، تصنيف نظام السوق
+   ومحاذاة الأطر الزمنية، Market Score مركّب مع NO CLEAR EDGE، تحليل
+   السيناريوهات، وتتبع دقة حي للأمام (وليس Backtest تاريخي).
+   ========================================================================== */
+const MikaExt = (function () {
+"use strict";
+const SYMBOL = 'XAUUSDT';
+
+// ---------------------------------------------------------------
+// المرحلة الأولى (2/3): جودة البيانات + الفصل CONFIRMED/DEVELOPING
+// ---------------------------------------------------------------
+const feeds = {
+    kline:     { lastAt: 0, maxAgeMs: 15000 },
+    orderbook: { lastAt: 0, maxAgeMs: 8000 },
+    trade:     { lastAt: 0, maxAgeMs: 25000 }, // XAUUSDT قد يكون تدفق الصفقات أبطأ من رموز البيتكوين الكبرى
+    ticker:    { lastAt: 0, maxAgeMs: 12000 }
+};
+function touchFeed(name) { if (feeds[name]) feeds[name].lastAt = Date.now(); }
+function dataQuality() {
+    const now = Date.now();
+    let total = 0, count = 0, worstAge = null, missing = [];
+    for (const key in feeds) {
+        const f = feeds[key];
+        if (f.lastAt === 0) { missing.push(key); continue; }
+        const age = now - f.lastAt;
+        worstAge = worstAge === null ? age : Math.max(worstAge, age);
+        total += Math.max(0, 100 - (age / f.maxAgeMs) * 100);
+        count++;
+    }
+    let quality = count ? Math.round(total / count) : 0;
+    if (missing.length) quality = Math.min(quality, count ? quality : 0, 55); // لا تسمح بـ99 وسط بيانات مفقودة
+    return { quality: Math.max(0, Math.min(100, quality)), worstAge, missing };
+}
+
+// ---------------------------------------------------------------
+// المرحلة الثانية: Bid/Ask/Spread + Trades + Order Book
+// ---------------------------------------------------------------
+let ticker = { bid: null, ask: null, lastPrice: null, openInterest: null, oiValue: null, fundingRate: null, nextFundingTime: null, volume24h: null };
+let oiHistory = []; // {t, oi} — لحساب %التغير خلال آخر فترة
+let ob = { bids: new Map(), asks: new Map() };
+let trades = []; // {t, side, price, qty}
+let liquidations = []; // {t, side, price, qty}
+let liqStreamSeen = false;
+
+function handleTicker(msg) {
+    touchFeed('ticker');
+    const d = msg.data;
+    if (!d) return;
+    // tickers يبث snapshot ثم delta بحقول جزئية — ندمج فوق الحالة الحالية
+    // بدل الاستبدال الكامل حتى لا تُفقد قيم لم تتغير في هذه الرسالة.
+    if (d.bid1Price != null) ticker.bid = parseFloat(d.bid1Price);
+    if (d.ask1Price != null) ticker.ask = parseFloat(d.ask1Price);
+    if (d.lastPrice != null) ticker.lastPrice = parseFloat(d.lastPrice);
+    if (d.volume24h != null) ticker.volume24h = parseFloat(d.volume24h);
+    if (d.fundingRate != null) ticker.fundingRate = parseFloat(d.fundingRate);
+    if (d.nextFundingTime != null) ticker.nextFundingTime = parseInt(d.nextFundingTime);
+    if (d.openInterest != null) {
+        ticker.openInterest = parseFloat(d.openInterest);
+        oiHistory.push({ t: Date.now(), oi: ticker.openInterest });
+        const cutoff = Date.now() - 30 * 60 * 1000;
+        while (oiHistory.length && oiHistory[0].t < cutoff) oiHistory.shift();
+    }
+    if (d.openInterestValue != null) ticker.oiValue = parseFloat(d.openInterestValue);
+}
+
+function handleOrderbook(msg) {
+    touchFeed('orderbook');
+    const d = msg.data;
+    if (!d) return;
+    if (msg.type === 'snapshot') { ob.bids = new Map(); ob.asks = new Map(); }
+    const apply = (map, levels) => {
+        if (!levels) return;
+        for (const [p, s] of levels) {
+            const price = parseFloat(p), size = parseFloat(s);
+            if (size === 0) map.delete(price); else map.set(price, size);
+        }
+    };
+    apply(ob.bids, d.b);
+    apply(ob.asks, d.a);
+}
+
+function handleTrade(msg) {
+    touchFeed('trade');
+    const arr = msg.data;
+    if (!Array.isArray(arr)) return;
+    for (const t of arr) {
+        trades.push({ t: parseInt(t.T) || Date.now(), side: t.S, price: parseFloat(t.p), qty: parseFloat(t.v) });
+    }
+    const cutoff = Date.now() - 5 * 60 * 1000;
+    while (trades.length && trades[0].t < cutoff) trades.shift();
+    if (trades.length > 500) trades.splice(0, trades.length - 500);
+}
+
+function handleLiquidation(msg) {
+    liqStreamSeen = true;
+    const arr = Array.isArray(msg.data) ? msg.data : [msg.data];
+    for (const l of arr) {
+        if (!l) continue;
+        liquidations.push({ t: parseInt(l.T) || Date.now(), side: l.S, price: parseFloat(l.p), qty: parseFloat(l.v) });
+    }
+    const cutoff = Date.now() - 60 * 60 * 1000;
+    while (liquidations.length && liquidations[0].t < cutoff) liquidations.shift();
+}
+
+function obTopLevels(map, side, n) {
+    const arr = [...map.entries()].map(([price, size]) => ({ price, size }));
+    arr.sort((a, b) => side === 'bid' ? b.price - a.price : a.price - b.price);
+    return arr.slice(0, n);
+}
+function orderBookImbalance(depth) {
+    const bids = obTopLevels(ob.bids, 'bid', depth);
+    const asks = obTopLevels(ob.asks, 'ask', depth);
+    const bidSum = bids.reduce((s, l) => s + l.size, 0);
+    const askSum = asks.reduce((s, l) => s + l.size, 0);
+    if (bidSum + askSum === 0) return { imbalance: 0, bidSum, askSum, bids, asks };
+    return { imbalance: Math.round(((bidSum - askSum) / (bidSum + askSum)) * 100), bidSum, askSum, bids, asks };
+}
+function tradeFlow(windowMs) {
+    const cutoff = Date.now() - windowMs;
+    let buyVol = 0, sellVol = 0, n = 0;
+    for (let i = trades.length - 1; i >= 0; i--) {
+        if (trades[i].t < cutoff) break;
+        if (trades[i].side === 'Buy') buyVol += trades[i].qty; else sellVol += trades[i].qty;
+        n++;
+    }
+    const total = buyVol + sellVol;
+    return { buyVol, sellVol, n, delta: total ? Math.round(((buyVol - sellVol) / total) * 100) : 0, speedPerMin: Math.round(n * (60000 / windowMs)) };
+}
+
+// ---------------------------------------------------------------
+// المرحلة الثالثة: خريطة سيولة موسّعة + مسافات + Session High/Low
+// ---------------------------------------------------------------
+function sessionWindow(nowSec) {
+    const hour = new Date(nowSec * 1000).getUTCHours();
+    // تقسيم مبسّط بتوقيت UTC: آسيا 00-08، لندن 08-13، نيويورك 13-21، بعد الجلسات 21-24
+    if (hour >= 0 && hour < 8) return { name: 'ASIA', startHour: 0 };
+    if (hour >= 8 && hour < 13) return { name: 'LONDON', startHour: 8 };
+    if (hour >= 13 && hour < 21) return { name: 'NEW YORK', startHour: 13 };
+    return { name: 'OFF-SESSION', startHour: 21 };
+}
+function sessionHighLow(bars) {
+    if (!bars.length) return null;
+    const lastT = bars[bars.length - 1].time;
+    const sess = sessionWindow(lastT);
+    const dayStart = Math.floor(lastT / 86400) * 86400;
+    const sessStart = dayStart + sess.startHour * 3600;
+    let h = -Infinity, l = Infinity, found = false;
+    for (let i = bars.length - 1; i >= 0; i--) {
+        if (bars[i].time < sessStart) break;
+        found = true;
+        if (bars[i].high > h) h = bars[i].high;
+        if (bars[i].low < l) l = bars[i].low;
+    }
+    return found ? { name: sess.name, high: h, low: l } : null;
+}
+function nearestLiquidity() {
+    const bars = window.historicalData || [];
+    if (!bars.length || !window.engineInstance) return null;
+    const price = bars[bars.length - 1].close;
+    const eng = window.engineInstance;
+    const lm = eng.liquidityMap || {};
+    const sess = sessionHighLow(bars);
+    const candidatesAbove = [], candidatesBelow = [];
+    const add = (label, p) => {
+        if (p == null || !isFinite(p)) return;
+        if (p > price) candidatesAbove.push({ label, price: p, dist: p - price });
+        else if (p < price) candidatesBelow.push({ label, price: p, dist: price - p });
+    };
+    add('Swing High', eng.protectedHigh ? eng.protectedHigh.price : null);
+    add('Swing Low', eng.protectedLow ? eng.protectedLow.price : null);
+    add('PDH', lm.pdh); add('PDL', lm.pdl);
+    (lm.equalHighs || []).forEach(z => add('Equal High', z.price));
+    (lm.equalLows || []).forEach(z => add('Equal Low', z.price));
+    if (sess) { add('Session High', sess.high); add('Session Low', sess.low); }
+    candidatesAbove.sort((a, b) => a.dist - b.dist);
+    candidatesBelow.sort((a, b) => a.dist - b.dist);
+    const nearAbove = candidatesAbove[0] || null;
+    const nearBelow = candidatesBelow[0] || null;
+    return {
+        price, session: sess,
+        buySide: nearAbove ? { ...nearAbove, pct: (nearAbove.dist / price) * 100 } : null,
+        sellSide: nearBelow ? { ...nearBelow, pct: (nearBelow.dist / price) * 100 } : null
+    };
+}
+
+// ---------------------------------------------------------------
+// المرحلة الخامسة: تصنيف نظام السوق (Regime) + MTF Alignment
+// ---------------------------------------------------------------
+let atrHistory = []; // لحساب Percentile محلي بدون إعادة استخدام كود المحرك الخاص
+let bbWidthHistory = [];
+let lastClosedCountSeen = -1;
+
+function ema(values, period) {
+    const out = new Array(values.length).fill(null);
+    if (values.length < period) return out;
+    const k = 2 / (period + 1);
+    let sum = 0; for (let i = 0; i < period; i++) sum += values[i];
+    let prev = sum / period; out[period - 1] = prev;
+    for (let i = period; i < values.length; i++) { prev = values[i] * k + prev * (1 - k); out[i] = prev; }
+    return out;
+}
+function computeADX(bars, period) {
+    if (bars.length < period * 2) return null;
+    const plusDM = [0], minusDM = [0], tr = [0];
+    for (let i = 1; i < bars.length; i++) {
+        const upMove = bars[i].high - bars[i - 1].high;
+        const downMove = bars[i - 1].low - bars[i].low;
+        plusDM.push(upMove > downMove && upMove > 0 ? upMove : 0);
+        minusDM.push(downMove > upMove && downMove > 0 ? downMove : 0);
+        tr.push(Math.max(bars[i].high - bars[i].low, Math.abs(bars[i].high - bars[i - 1].close), Math.abs(bars[i].low - bars[i - 1].close)));
+    }
+    const wilder = (vals) => {
+        const out = new Array(vals.length).fill(null);
+        let sum = 0; for (let i = 1; i <= period; i++) sum += vals[i] || 0;
+        let prev = sum; out[period] = prev;
+        for (let i = period + 1; i < vals.length; i++) { prev = prev - (prev / period) + (vals[i] || 0); out[i] = prev; }
+        return out;
+    };
+    const trS = wilder(tr), pdmS = wilder(plusDM), mdmS = wilder(minusDM);
+    const dx = [];
+    for (let i = 0; i < bars.length; i++) {
+        if (trS[i] == null || !trS[i]) { dx.push(null); continue; }
+        const pdi = (pdmS[i] / trS[i]) * 100, mdi = (mdmS[i] / trS[i]) * 100;
+        const sum = pdi + mdi;
+        dx.push(sum ? (Math.abs(pdi - mdi) / sum) * 100 : 0);
+    }
+    const validDx = dx.filter(v => v != null);
+    if (validDx.length < period) return null;
+    let adx = validDx.slice(0, period).reduce((a, b) => a + b, 0) / period;
+    for (let i = period; i < validDx.length; i++) adx = (adx * (period - 1) + validDx[i]) / period;
+    return adx;
+}
+function percentileRank(arr, value) {
+    if (!arr.length) return 50;
+    const below = arr.filter(v => v <= value).length;
+    return Math.round((below / arr.length) * 100);
+}
+function computeRegime() {
+    const bars = window.historicalData || [];
+    const eng = window.engineInstance;
+    if (bars.length < 40 || !eng) return { trending: null, volLabel: 'N/A', expansion: null, adx: null };
+    const closed = bars.slice(0, -1);
+    // نلتقط عيّنة ATR/BB جديدة فقط عند إغلاق شمعة جديدة فعلياً (لا عند كل تِك)
+    if (closed.length !== lastClosedCountSeen && eng._lastAtr) {
+        atrHistory.push(eng._lastAtr);
+        if (atrHistory.length > 150) atrHistory.shift();
+        const closes = closed.slice(-20).map(b => b.close);
+        if (closes.length === 20) {
+            const sma = closes.reduce((a, b) => a + b, 0) / 20;
+            const variance = closes.reduce((a, b) => a + (b - sma) * (b - sma), 0) / 20;
+            const width = (Math.sqrt(variance) * 2 / sma) * 100;
+            bbWidthHistory.push(width);
+            if (bbWidthHistory.length > 60) bbWidthHistory.shift();
+        }
+        lastClosedCountSeen = closed.length;
+    }
+    const adx = computeADX(closed.slice(-120), 14);
+    const trending = adx != null ? adx >= 23 : null;
+    const atrPct = eng._lastAtr != null ? percentileRank(atrHistory, eng._lastAtr) : 50;
+    const volLabel = atrPct >= 70 ? 'HIGH' : atrPct <= 30 ? 'LOW' : 'MEDIUM';
+    let expansion = null;
+    if (bbWidthHistory.length >= 6) {
+        const recent = bbWidthHistory.slice(-3).reduce((a, b) => a + b, 0) / 3;
+        const prior = bbWidthHistory.slice(-6, -3).reduce((a, b) => a + b, 0) / 3;
+        expansion = recent > prior * 1.03 ? 'EXPANSION' : recent < prior * 0.97 ? 'CONTRACTION' : 'STABLE';
+    }
+    return { trending, adx: adx != null ? Math.round(adx) : null, volLabel, atrPct, expansion };
+}
+
+const MTF_DEFS = [
+    { key: '4h', bybit: '240', binance: '4h', weight: 0.35, label: '4H' },
+    { key: '1h', bybit: '60', binance: '1h', weight: 0.30, label: '1H' },
+    { key: '15m', bybit: '15', binance: '15m', weight: 0.20, label: '15m' },
+    { key: '5m', bybit: '5', binance: '5m', weight: 0.15, label: '5m' }
+];
+let mtfState = {}; // key -> {bias, lean, close, ema20, ema50}
+let mtfLastFetch = 0;
+
+async function fetchOneTF(def) {
+    const endpoints = [
+        { url: `https://api.bybit.com/v5/market/kline?category=linear&symbol=${SYMBOL}&interval=${def.bybit}&limit=150`, source: 'bybit' },
+        { url: `https://api.bytick.com/v5/market/kline?category=linear&symbol=${SYMBOL}&interval=${def.bybit}&limit=150`, source: 'bybit' },
+        { url: `https://fapi.binance.com/fapi/v1/klines?symbol=${SYMBOL}&interval=${def.binance}&limit=150`, source: 'binance' }
+    ];
+    for (const ep of endpoints) {
+        try {
+            const res = await fetch(ep.url, { cache: 'no-store' });
+            if (!res.ok) continue;
+            const j = await res.json();
+            let closes = null;
+            if (ep.source === 'bybit' && j && j.retCode === 0 && j.result && j.result.list && j.result.list.length) {
+                closes = j.result.list.reverse().map(x => parseFloat(x[4]));
+            } else if (ep.source === 'binance' && Array.isArray(j) && j.length) {
+                closes = j.map(x => parseFloat(x[4]));
+            }
+            if (closes && closes.length >= 55) return closes;
+        } catch (e) { /* جرّب المصدر التالي */ }
+    }
+    return null;
+}
+async function refreshMTF() {
+    for (const def of MTF_DEFS) {
+        const closes = await fetchOneTF(def);
+        if (!closes) { mtfState[def.key] = { bias: 'N/A', lean: 0, label: def.label, weight: def.weight }; continue; }
+        const e20 = ema(closes, 20), e50 = ema(closes, 50);
+        const lastClose = closes[closes.length - 1];
+        const last20 = e20[e20.length - 1], last50 = e50[e50.length - 1];
+        let bias = 'NEUTRAL', lean = 0;
+        if (last20 != null && last50 != null) {
+            if (lastClose > last20 && last20 > last50) { bias = 'BULLISH'; lean = 70; }
+            else if (lastClose < last20 && last20 < last50) { bias = 'BEARISH'; lean = -70; }
+            else { bias = last20 >= last50 ? 'BULLISH-WEAK' : 'BEARISH-WEAK'; lean = last20 >= last50 ? 25 : -25; }
+        }
+        mtfState[def.key] = { bias, lean, label: def.label, weight: def.weight, close: lastClose };
+    }
+    mtfLastFetch = Date.now();
+}
+function mtfAlignment() {
+    const entries = Object.values(mtfState).filter(v => v.bias !== 'N/A');
+    if (!entries.length) return { score: null, entries: [] };
+    const netLean = entries.reduce((s, v) => s + v.lean * v.weight, 0);
+    const totalWeight = entries.reduce((s, v) => s + v.weight, 0) || 1;
+    const majoritySign = netLean >= 0 ? 1 : -1;
+    const agreeWeight = entries.reduce((s, v) => s + (Math.sign(v.lean || 0) === majoritySign || v.lean === 0 ? v.weight : 0), 0);
+    return { score: Math.round((agreeWeight / totalWeight) * 100), netLean, entries };
+}
+
+// ---------------------------------------------------------------
+// المرحلة السادسة/التاسعة: Market Score + NO CLEAR EDGE + Scenario
+// ---------------------------------------------------------------
+function causalChainStages() {
+    const eng = window.engineInstance;
+    if (!eng) return [];
+    const order = [
+        ['Sweep', 'sweepEvent'], ['MSS', 'internalMssEvent'], ['Displacement', 'displacementEvent'],
+        ['Zone', 'causalZoneEvent'], ['Retest', 'retestEvent'], ['Rejection', 'rejectionEvent'],
+        ['Trigger', 'triggerEvent'], ['Confirmation', 'confirmEvent']
+    ];
+    const invalid = eng.state === 'INVALIDATED' || eng.state === 'CLOSED';
+    const reachedIdx = order.reduce((last, [, key], i) => eng.chain[key] ? i : last, -1);
+    return order.map(([name, key], i) => {
+        let status;
+        if (!eng.chain[key]) status = 'PENDING';
+        else if (i === reachedIdx && (eng.state === 'SETUP' || eng.state === 'ARMED' || eng.state === 'RETEST')) status = 'DEVELOPING';
+        else if (invalid && i === reachedIdx) status = 'FAILED';
+        else if (i < reachedIdx || eng.state === 'CONFIRMED' || eng.state === 'ACTIVE' || eng.state === 'TP1' || eng.state === 'CLOSED') status = 'CONFIRMED';
+        else status = 'DEVELOPING';
+        return { name, status };
+    });
+}
+function chainOverallStatus(stages) {
+    if (!stages.length) return 'PENDING';
+    if (stages.some(s => s.status === 'FAILED')) return 'FAILED';
+    if (stages[stages.length - 1].status === 'CONFIRMED') return 'CONFIRMED';
+    if (stages.some(s => s.status === 'DEVELOPING' || s.status === 'CONFIRMED')) return 'DEVELOPING';
+    return 'PENDING';
+}
+
+let lastComputed = null; // آخر ناتج marketScore() — تُقرأ منه لوحة العرض والمعايرة معاً
+
+function marketScore() {
+    const bars = window.historicalData || [];
+    const eng = window.engineInstance;
+    const res = window.lastResult;
+    if (!bars.length || !eng) return null;
+    const price = bars[bars.length - 1].close;
+    const regime = computeRegime();
+    const near = nearestLiquidity();
+    const flow60 = tradeFlow(60000);
+    const obImb = orderBookImbalance(10);
+    const mtf = mtfAlignment();
+
+    // كل عامل بمقياس اتجاهي -100..+100 (صعودي موجب / هبوطي سالب)
+    const causalLean = res && res.direction === 'BUY' ? (res.confidence || 0)
+                      : res && res.direction === 'SELL' ? -(res.confidence || 0) : 0;
+    const htfLean = eng.htfBias === 'BULLISH' ? 60 : eng.htfBias === 'BEARISH' ? -60 : 0;
+    let liqLean = 0;
+    if (near && near.buySide && near.sellSide) liqLean = near.sellSide.pct < near.buySide.pct ? -25 : 25;
+    const rsi = eng._lastRsi, macdH = eng._lastMacdHist;
+    let momLean = 0;
+    if (rsi != null) momLean += (rsi - 50) * 1.6;
+    if (macdH != null) momLean += macdH > 0 ? 20 : macdH < 0 ? -20 : 0;
+    momLean = Math.max(-100, Math.min(100, momLean));
+    const lastClosed = bars.length > 1 ? bars[bars.length - 2] : bars[0];
+    const volRatio = eng._avgVol ? (lastClosed.volume || 0) / eng._avgVol : 1;
+    let volLean = 0;
+    if (volRatio > 1.1) volLean = (lastClosed.close >= lastClosed.open ? 1 : -1) * Math.min(100, (volRatio - 1) * 80);
+    const flowLean = flow60.n >= 3 ? Math.round(flow60.delta * 0.6 + obImb.imbalance * 0.4) : obImb.imbalance;
+    const mtfLean = mtf.netLean != null ? Math.max(-100, Math.min(100, mtf.netLean)) : 0;
+
+    const weights = { causal: 0.22, htf: 0.14, liquidity: 0.10, momentum: 0.14, volume: 0.10, flow: 0.16, mtf: 0.14 };
+    let netLean = causalLean * weights.causal + htfLean * weights.htf + liqLean * weights.liquidity +
+                  momLean * weights.momentum + volLean * weights.volume + flowLean * weights.flow + mtfLean * weights.mtf;
+
+    // التقلب/النظام لا يُصوّتان على الاتجاه — بل يُقوّيان أو يُضعفان قناعة
+    // الاتجاه القائم أصلاً (نظام مُتجه + تقلب مرتفع = قناعة أعلى، ونطاق
+    // متذبذب + تقلب منخفض = قناعة أقل)، تماماً كما يقرأ محلل بشري السياق.
+    let dampening = 1.0;
+    if (regime.trending === true && regime.volLabel === 'HIGH') dampening = 1.15;
+    else if (regime.trending === false || regime.volLabel === 'LOW') dampening = 0.65;
+    netLean = Math.max(-100, Math.min(100, netLean * dampening));
+
+    const dataQ = dataQuality();
+    let score = Math.round(50 + netLean / 2);
+    score = Math.max(0, Math.min(100, score));
+
+    // -----------------------------------------------------------
+    // المرحلة التاسعة: NO CLEAR EDGE بدل إجبار BUY/SELL
+    // -----------------------------------------------------------
+    const reasons = [];
+    if (Math.abs(netLean) < 15) reasons.push('لا يوجد ترجيح واضح لاتجاه واحد (Net Lean ضعيف)');
+    if (Math.sign(htfLean) !== 0 && Math.sign(causalLean) !== 0 && Math.sign(htfLean) !== Math.sign(causalLean))
+        reasons.push(`الاتجاه الأعلى ${eng.htfBias} يتعارض مع سلسلة السبب/النتيجة الحالية`);
+    if (near && near.buySide && near.sellSide && Math.abs(near.buySide.pct - near.sellSide.pct) < 0.05)
+        reasons.push('السيولة متوازنة تقريباً فوق وتحت السعر (لا انحياز سيولة واضح)');
+    if (volRatio < 0.6) reasons.push('حجم التداول ضعيف جداً مقارنة بالمتوسط');
+    if (dataQ.quality < 55) reasons.push('جودة البيانات اللحظية منخفضة حالياً');
+    const noClearEdge = reasons.length >= 2 || dataQ.quality < 35;
+
+    const stages = causalChainStages();
+    lastComputed = {
+        price, regime, near, flow60, obImb, mtf, dataQ,
+        causalLean, htfLean, liqLean, momLean, volLean, flowLean, mtfLean, dampening,
+        netLean, score, noClearEdge, reasons, stages, chainStatus: chainOverallStatus(stages)
+    };
+    return lastComputed;
+}
+
+function scenarioText(m) {
+    if (!m) return 'بيانات غير كافية بعد.';
+    const dir = m.netLean >= 0 ? 'صعودي' : 'هبوطي';
+    const buyTarget = m.near && m.near.buySide ? `${m.near.buySide.price.toFixed(1)} (${m.near.buySide.label}, +${m.near.buySide.pct.toFixed(2)}%)` : '--';
+    const sellTarget = m.near && m.near.sellSide ? `${m.near.sellSide.price.toFixed(1)} (${m.near.sellSide.label}, -${m.near.sellSide.pct.toFixed(2)}%)` : '--';
+    const eng = window.engineInstance;
+    const invalidLevel = m.netLean >= 0
+        ? (eng.protectedLow ? eng.protectedLow.price.toFixed(1) : '--')
+        : (eng.protectedHigh ? eng.protectedHigh.price.toFixed(1) : '--');
+
+    if (m.noClearEdge) {
+        return `<span class="scn-primary">السيناريو الأساسي:</span> تذبذب/نطاق محتمل حتى تُحسم السيولة القريبة — لا انحياز إحصائي كافٍ حالياً.<br>` +
+               `<span class="scn-alt">السيناريو البديل:</span> اختراق أحد الجانبين (${buyTarget} أو ${sellTarget}) يليه اتجاه فعلي إذا تأكد بحجم وإغلاق قوي.<br>` +
+               `<span class="scn-inv">سبب NO CLEAR EDGE:</span> ${m.reasons.join(' + ')}`;
+    }
+    if (m.netLean >= 0) {
+        return `<span class="scn-primary">السيناريو الأساسي (${dir}):</span> استمرار الصعود نحو أقرب سيولة بيع فوق السعر عند ${buyTarget}.<br>` +
+               `<span class="scn-alt">السيناريو البديل:</span> اكتساح سيولة (Liquidity Sweep) لأقرب مستوى تحت السعر عند ${sellTarget} ثم انعكاس صعودي حقيقي.<br>` +
+               `<span class="scn-inv">الإلغاء (Invalidation):</span> إغلاق شمعة تحت ${invalidLevel}.`;
+    }
+    return `<span class="scn-primary">السيناريو الأساسي (${dir}):</span> استمرار الهبوط نحو أقرب سيولة بيع تحت السعر عند ${sellTarget}.<br>` +
+           `<span class="scn-alt">السيناريو البديل:</span> اكتساح سيولة لأقرب مستوى فوق السعر عند ${buyTarget} ثم انعكاس هبوطي حقيقي.<br>` +
+           `<span class="scn-inv">الإلغاء (Invalidation):</span> إغلاق شمعة فوق ${invalidLevel}.`;
+}
+
+// ---------------------------------------------------------------
+// المرحلة السابعة: تتبع دقة حي للأمام (Live-Forward)، وليس Backtest
+// ---------------------------------------------------------------
+const CALIB_PENDING_KEY = 'mika_calib_pending_v1';
+const CALIB_AGG_KEY = 'mika_calib_agg_v1';
+const HORIZONS = [{ key: 'm5', ms: 5 * 60000 }, { key: 'm15', ms: 15 * 60000 }, { key: 'm30', ms: 30 * 60000 }, { key: 'm60', ms: 60 * 60000 }];
+function lsGet(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
+function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* وضع تصفح خاص أو تخزين ممتلئ — تجاهل بأمان */ } }
+function scoreBucket(score) {
+    if (score >= 90) return '90-100'; if (score >= 80) return '80-90'; if (score >= 70) return '70-80';
+    if (score >= 60) return '60-70'; if (score >= 50) return '50-60'; if (score >= 40) return '40-50';
+    return '<40';
+}
+let lastLoggedAt = 0;
+function maybeLogSample(m) {
+    if (!m || m.score == null) return;
+    const now = Date.now();
+    if (now - lastLoggedAt < 4 * 60 * 1000) return; // عيّنة كل 4 دقائق كحد أقصى — يكفي للمعايرة ويمنع تضخّم التخزين
+    lastLoggedAt = now;
+    const pending = lsGet(CALIB_PENDING_KEY, []);
+    pending.push({ t: now, price: m.price, score: m.score, dirLabel: m.netLean >= 0 ? 'BULLISH' : 'BEARISH', done: {} });
+    while (pending.length > 300) pending.shift();
+    lsSet(CALIB_PENDING_KEY, pending);
+}
+function evaluatePending() {
+    const bars = window.historicalData || [];
+    if (!bars.length) return;
+    const currentPrice = bars[bars.length - 1].close;
+    const now = Date.now();
+    let pending = lsGet(CALIB_PENDING_KEY, []);
+    const agg = lsGet(CALIB_AGG_KEY, {});
+    let changed = false;
+    pending = pending.filter(sample => {
+        for (const h of HORIZONS) {
+            if (sample.done[h.key]) continue;
+            if (now - sample.t < h.ms) continue;
+            const changePct = ((currentPrice - sample.price) / sample.price) * 100;
+            const actualDir = changePct > 0.01 ? 'BULLISH' : changePct < -0.01 ? 'BEARISH' : 'FLAT';
+            const correct = actualDir === sample.dirLabel;
+            const bucket = scoreBucket(sample.score);
+            agg[bucket] = agg[bucket] || {};
+            agg[bucket][h.key] = agg[bucket][h.key] || { n: 0, correct: 0 };
+            agg[bucket][h.key].n++;
+            if (correct) agg[bucket][h.key].correct++;
+            sample.done[h.key] = true;
+            changed = true;
+        }
+        const allDone = HORIZONS.every(h => sample.done[h.key]);
+        return !allDone;
+    });
+    if (changed) { lsSet(CALIB_PENDING_KEY, pending); lsSet(CALIB_AGG_KEY, agg); }
+    return { pending, agg };
+}
+function calibrationSummary() {
+    const agg = lsGet(CALIB_AGG_KEY, {});
+    const pending = lsGet(CALIB_PENDING_KEY, []);
+    const order = ['90-100', '80-90', '70-80', '60-70', '50-60', '40-50', '<40'];
+    const rows = order.filter(b => agg[b] && agg[b].m15 && agg[b].m15.n > 0).map(b => {
+        const c = agg[b].m15;
+        return { bucket: b, n: c.n, acc: Math.round((c.correct / c.n) * 100) };
+    });
+    const totalSamples = pending.length + Object.values(agg).reduce((s, b) => s + (b.m15 ? b.m15.n : 0), 0);
+    return { rows, totalSamples };
+}
+
+// ---------------------------------------------------------------
+// حلقة العرض
+// ---------------------------------------------------------------
+function fmtSigned(n, digits) { if (n == null || !isFinite(n)) return '--'; const s = n > 0 ? '+' : ''; return `${s}${n.toFixed(digits == null ? 0 : digits)}`; }
+function el(id) { return document.getElementById(id); }
+
+function render() {
+    const m = marketScore();
+    const dq = dataQuality();
+
+    if (el('dqInline')) el('dqInline').textContent = `DATA QUALITY ${dq.quality}/100 | AGE ${dq.worstAge != null ? dq.worstAge : '--'} ms`;
+    if (el('dqDetail')) {
+        const missTxt = dq.missing.length ? ` — بيانات لم تصل بعد: ${dq.missing.join(', ')}` : '';
+        el('dqDetail').textContent = `${dq.quality}/100${missTxt}`;
+    }
+    if (el('dqBar')) {
+        el('dqBar').style.width = dq.quality + '%';
+        el('dqBar').style.background = dq.quality >= 80 ? '#34d399' : dq.quality >= 50 ? '#eab308' : '#f87171';
+    }
+
+    if (!m) return;
+    const bars = window.historicalData || [];
+    const price = bars.length ? bars[bars.length - 1].close : null;
+
+    if (el('dPrice')) el('dPrice').textContent = price != null ? price.toFixed(2) : '--';
+    if (el('dBidAsk')) el('dBidAsk').textContent = (ticker.bid != null && ticker.ask != null) ? `${ticker.bid.toFixed(2)} / ${ticker.ask.toFixed(2)}` : '--';
+    if (el('dSpread')) {
+        if (ticker.bid != null && ticker.ask != null) {
+            const sp = ticker.ask - ticker.bid;
+            el('dSpread').textContent = `${sp.toFixed(2)} (${((sp / ticker.ask) * 100).toFixed(3)}%)`;
+        } else el('dSpread').textContent = '--';
+    }
+
+    const regime = m.regime;
+    if (el('dRegime')) el('dRegime').textContent = regime.trending == null ? '--' : `${regime.trending ? 'TRENDING' : 'RANGING'} ${regime.expansion || ''}`.trim();
+    if (el('dVol')) {
+        el('dVol').textContent = regime.volLabel + (regime.atrPct != null ? ` (${regime.atrPct}%ile)` : '');
+        el('dVol').className = 'dash-value ' + (regime.volLabel === 'HIGH' ? 'neu' : regime.volLabel === 'LOW' ? 'muted' : '');
+    }
+    if (el('dMomentum')) {
+        const rsi = window.engineInstance ? window.engineInstance._lastRsi : null;
+        el('dMomentum').textContent = rsi != null ? `RSI ${rsi.toFixed(0)} | ${m.momLean > 20 ? 'STRONG UP' : m.momLean < -20 ? 'STRONG DOWN' : 'NEUTRAL'}` : '--';
+    }
+
+    if (el('dHtf')) {
+        const eng = window.engineInstance;
+        el('dHtf').textContent = eng ? `${eng.htfBias} ${Math.abs(m.htfLean)}/100` : '--';
+        el('dHtf').className = 'dash-value ' + (m.htfLean > 0 ? 'pos' : m.htfLean < 0 ? 'neg' : 'muted');
+    }
+    if (el('dMtf')) el('dMtf').textContent = m.mtf.score != null ? `${m.mtf.score}/100` : 'جارٍ التحميل...';
+    if (el('dChain')) { el('dChain').textContent = m.chainStatus; el('dChain').className = 'dash-value ' + (m.chainStatus === 'CONFIRMED' ? 'pos' : m.chainStatus === 'FAILED' ? 'neg' : 'neu'); }
+
+    if (el('dLiquidity')) {
+        const n = m.near;
+        el('dLiquidity').textContent = (n && n.buySide && n.sellSide) ? (n.buySide.pct < n.sellSide.pct ? 'BUY-SIDE ABOVE' : 'SELL-SIDE BELOW') : '--';
+    }
+    if (el('dFlow')) { el('dFlow').textContent = fmtSigned(m.flowLean, 0) + '/100'; el('dFlow').className = 'dash-value ' + (m.flowLean > 10 ? 'pos' : m.flowLean < -10 ? 'neg' : 'muted'); }
+    if (el('dImbalance')) el('dImbalance').textContent = fmtSigned(m.obImb.imbalance, 0) + '/100';
+
+    if (el('dOi')) {
+        if (ticker.openInterest != null) {
+            const old15 = oiHistory.find(h => h.t <= Date.now() - 15 * 60000);
+            const chg = old15 ? ((ticker.openInterest - old15.oi) / old15.oi) * 100 : null;
+            el('dOi').textContent = `${Math.round(ticker.openInterest).toLocaleString()} ${chg != null ? '(' + fmtSigned(chg, 1) + '% /15m)' : ''}`;
+        } else el('dOi').textContent = 'غير متاح لهذا الرمز';
+    }
+    if (el('dFunding')) el('dFunding').textContent = ticker.fundingRate != null ? `${(ticker.fundingRate * 100).toFixed(4)}%` : '--';
+    if (el('dLiq')) el('dLiq').textContent = liqStreamSeen ? `${liquidations.length} آخر ساعة` : 'لا تتوفر بيانات تصفية لهذا الرمز';
+
+    if (el('dScore')) {
+        el('dScore').textContent = m.noClearEdge ? 'NO CLEAR EDGE' : `${m.score}/100`;
+        el('dScore').className = 'dash-value ' + (m.noClearEdge ? 'neu' : m.netLean > 0 ? 'pos' : 'neg');
+    }
+    if (el('dScoreBreakdown')) {
+        el('dScoreBreakdown').innerHTML =
+            `Causal ${fmtSigned(m.causalLean,0)} · HTF ${fmtSigned(m.htfLean,0)} · Liquidity ${fmtSigned(m.liqLean,0)} · Momentum ${fmtSigned(m.momLean,0)}<br>` +
+            `Volume ${fmtSigned(m.volLean,0)} · Order Flow ${fmtSigned(m.flowLean,0)} · MTF ${fmtSigned(m.mtfLean,0)} · Volatility×${m.dampening.toFixed(2)}`;
+    }
+    if (el('dNearLiq')) {
+        const n = m.near;
+        el('dNearLiq').innerHTML = n
+            ? `Buy-side: ${n.buySide ? `${n.buySide.label} ${n.buySide.price.toFixed(1)} (+${n.buySide.pct.toFixed(2)}%)` : '--'} &nbsp;|&nbsp; Sell-side: ${n.sellSide ? `${n.sellSide.label} ${n.sellSide.price.toFixed(1)} (-${n.sellSide.pct.toFixed(2)}%)` : '--'}`
+            : '--';
+    }
+    if (el('dChainStages')) {
+        el('dChainStages').innerHTML = m.stages.map(s => {
+            const color = s.status === 'CONFIRMED' ? '#34d399' : s.status === 'DEVELOPING' ? '#eab308' : s.status === 'FAILED' ? '#f87171' : '#64748b';
+            return `<span style="color:${color}">${s.name}: ${s.status}</span>`;
+        }).join(' → ');
+    }
+
+    const banner = el('edgeBanner');
+    if (banner) {
+        if (m.noClearEdge) { banner.className = 'edge-banner show'; banner.textContent = `⚠️ NO CLEAR EDGE — ${m.reasons.join(' + ')}`; }
+        else banner.className = 'edge-banner';
+    }
+    const scnBox = el('scenarioBox');
+    if (scnBox) scnBox.innerHTML = scenarioText(m);
+
+    const tapeBox = el('tapeBox');
+    if (tapeBox) {
+        const recent = trades.slice(-15).reverse();
+        tapeBox.innerHTML = recent.length ? recent.map(t =>
+            `<div class="tape-row ${t.side === 'Buy' ? 'buy' : 'sell'}"><span>${t.side === 'Buy' ? '🟢 BUY' : '🔴 SELL'}</span><span>${t.price.toFixed(2)}</span><span>${t.qty}</span></div>`
+        ).join('') : '<div style="color:#64748b;">بانتظار وصول صفقات لحظية...</div>';
+    }
+
+    maybeLogSample(m);
+    const calib = calibrationSummary();
+    if (el('calibSampleCount')) el('calibSampleCount').textContent = `${calib.totalSamples} عينة (${calib.rows.reduce((s,r)=>s+r.n,0)} منها ناضجة عند 15د)`;
+    if (el('calibBody')) {
+        el('calibBody').innerHTML = calib.rows.length
+            ? calib.rows.map(r => `<tr><td>${r.bucket}</td><td>${r.n}</td><td>${r.acc}%</td></tr>`).join('')
+            : '<tr><td colspan="3" style="color:#64748b;">لا توجد عينات ناضجة كافية بعد (تحتاج 15 دقيقة على الأقل من التشغيل المتواصل)</td></tr>';
+    }
+}
+
+function init() {
+    render();
+    setInterval(render, 1000);
+    setInterval(evaluatePending, 30000);
+    refreshMTF();
+    setInterval(refreshMTF, 90000);
+}
+
+return { touchFeed, handleTicker, handleOrderbook, handleTrade, handleLiquidation, render, init, dataQuality };
+})();
+
 async function boot() {
     const ok = await loadLightweightCharts();
     if (!ok || !window.LightweightCharts) {
@@ -2616,6 +3231,7 @@ async function boot() {
     pollTimer = setInterval(fetchBybitData, 5000);
     await fetchBybitData();
     connectWs();
+    MikaExt.init();
 }
 
 boot();
